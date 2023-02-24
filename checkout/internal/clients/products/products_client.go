@@ -1,14 +1,10 @@
 package product
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"route256/checkout/internal/domain"
-
-	"github.com/pkg/errors"
+	clientwrapper "route256/libs/client"
 )
 
 type Client struct {
@@ -38,31 +34,10 @@ type ProductResponse struct {
 func (c *Client) Product(ctx context.Context, sku uint32) (*domain.Product, error) {
 	request := ProductRequest{SKU: sku}
 
-	rawJSON, err := json.Marshal(request)
-	if err != nil {
-		return nil, errors.Wrap(err, "marshaling json")
-	}
-
 	//TODO maybe change Sprint?
-	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprint(sku), bytes.NewBuffer(rawJSON))
+	response, err := clientwrapper.SendRequest[ProductRequest, ProductResponse](ctx, request, fmt.Sprint(sku))
 	if err != nil {
-		return nil, errors.Wrap(err, "creating http request")
-	}
-
-	httpResponse, err := http.DefaultClient.Do(httpRequest)
-	if err != nil {
-		return nil, errors.Wrap(err, "calling http")
-	}
-	defer httpResponse.Body.Close()
-
-	if httpResponse.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("wrong status code: %d", httpResponse.StatusCode)
-	}
-
-	var response ProductResponse
-	err = json.NewDecoder(httpResponse.Body).Decode(&response)
-	if err != nil {
-		return nil, errors.Wrap(err, "decoding json")
+		return nil, err
 	}
 
 	product := domain.Product{

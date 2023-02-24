@@ -10,6 +10,7 @@ import (
 	"route256/checkout/internal/handlers/addtocart"
 	deletefromcart "route256/checkout/internal/handlers/deleteFromCart"
 	listcart "route256/checkout/internal/handlers/listCart"
+	"route256/checkout/internal/handlers/purchase"
 	"route256/libs/srvwrapper"
 )
 
@@ -29,10 +30,12 @@ func main() {
 	addToCartHandler := addtocart.New(businessLogic)
 	deleteFromCart := deletefromcart.New(businessLogic)
 	listCart := listcart.New(businessLogic)
+	purchase := purchase.New(businessLogic)
 
 	http.Handle("/addToCart", srvwrapper.New(addToCartHandler.Handle))
 	http.Handle("/deleteFromCart", srvwrapper.New(deleteFromCart.Handle))
 	http.Handle("/listCart", srvwrapper.New(listCart.Handle))
+	http.Handle("/purchase", srvwrapper.New(purchase.Handle))
 
 	log.Println("listening http at", port)
 	err = http.ListenAndServe(port, nil)
