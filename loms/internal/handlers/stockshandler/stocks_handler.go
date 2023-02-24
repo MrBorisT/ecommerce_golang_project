@@ -2,6 +2,7 @@ package stockshandler
 
 import (
 	"context"
+	"errors"
 	"log"
 )
 
@@ -10,9 +11,16 @@ type Request struct {
 }
 
 func (r Request) Validate() error {
-	// TODO: implement
+	switch {
+	case r.SKU == 0:
+		return ErrEmptySKU
+	}
 	return nil
 }
+
+var (
+	ErrEmptySKU = errors.New("empty sku")
+)
 
 type Item struct {
 	WarehouseID int64  `json:"warehouseID"`
