@@ -43,14 +43,15 @@ func (r Request) Validate() error {
 }
 
 type Response struct {
+	Test string `json:"test"`
 }
 
 func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {
-	log.Printf("addToCart: %+v", req)
+	log.Printf("deleteFromCart: %+v", req)
 
 	var response Response
 
-	err := h.businessLogic.AddToCart(ctx, req.User, req.Sku, req.Count)
+	err := h.businessLogic.DeleteFromCart(ctx, req.User, req.Sku, req.Count)
 	if err != nil {
 		return response, err
 	}
