@@ -6,12 +6,18 @@ type StocksChecker interface {
 	Stocks(ctx context.Context, sku uint32) ([]Stock, error)
 }
 
-type Model struct {
-	stocksChecker StocksChecker
+type ProductChecker interface {
+	Product(ctx context.Context, sku uint32) (*Product, error)
 }
 
-func New(stocksChecker StocksChecker) *Model {
+type Model struct {
+	stocksChecker  StocksChecker
+	productChecker ProductChecker
+}
+
+func New(stocksChecker StocksChecker, productChecker ProductChecker) *Model {
 	return &Model{
-		stocksChecker: stocksChecker,
+		stocksChecker:  stocksChecker,
+		productChecker: productChecker,
 	}
 }
