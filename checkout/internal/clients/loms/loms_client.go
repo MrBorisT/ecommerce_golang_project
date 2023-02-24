@@ -12,19 +12,20 @@ import (
 )
 
 type Client struct {
-	url string
-
-	urlStocks string
+	url            string
+	urlStocks      string
+	urlCreateOrder string
 }
 
 func New(url string) *Client {
 	return &Client{
-		url: url,
-
-		urlStocks: url + "/stocks",
+		url:            url,
+		urlStocks:      url + "/stocks",
+		urlCreateOrder: url + "/createOrder",
 	}
 }
 
+// STOCKS
 type StocksRequest struct {
 	SKU uint32 `json:"sku"`
 }
@@ -76,4 +77,49 @@ func (c *Client) Stocks(ctx context.Context, sku uint32) ([]domain.Stock, error)
 	}
 
 	return stocks, nil
+}
+
+// CREATE ORDER
+type CreateOrderRequest struct {
+	User int64 `json:"user"`
+}
+
+type CreateOrderResponse struct {
+	OrderID int64 `json:"orderID"`
+}
+
+func (c *Client) CreateOrder(ctx context.Context, user int64) (*domain.Order, error) {
+	request := CreateOrderRequest{User: user}
+
+	rawJSON, err := json.Marshal(request)
+	if err != nil {
+		return nil, errors.Wrap(err, "marshaling json")
+	}
+
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, c.urlCreateOrder, bytes.NewBuffer(rawJSON))
+	if err != nil {
+		return nil, errors.Wrap(err, "creating http request")
+	}
+
+	httpResponse, err := http.DefaultClient.Do(httpRequest)
+	if err != nil {
+		return nil, errors.Wrap(err, "calling http")
+	}
+	defer httpResponse.Body.Close()
+
+	if httpResponse.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("wrong status code: %d", httpResponse.StatusCode)
+	}
+
+	var response CreateOrderResponse
+	err = json.NewDecoder(httpResponse.Body).Decode(&response)
+	if err != nil {
+		return nil, errors.Wrap(err, "decoding json")
+	}
+
+	order := domain.Order{
+		OrderID: response.OrderID,
+	}
+
+	return &order, nil
 }

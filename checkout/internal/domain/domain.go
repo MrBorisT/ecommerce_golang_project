@@ -10,14 +10,19 @@ type ProductChecker interface {
 	Product(ctx context.Context, sku uint32) (*Product, error)
 }
 
+type LOMS interface {
+	StocksChecker
+	OrderCreator
+}
+
 type Model struct {
-	stocksChecker  StocksChecker
+	loms           LOMS
 	productChecker ProductChecker
 }
 
-func New(stocksChecker StocksChecker, productChecker ProductChecker) *Model {
+func New(loms LOMS, productChecker ProductChecker) *Model {
 	return &Model{
-		stocksChecker:  stocksChecker,
+		loms:           loms,
 		productChecker: productChecker,
 	}
 }
