@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"route256/loms/internal/domain"
 )
 
 type Request struct {
@@ -31,20 +32,24 @@ type Response struct {
 	Stocks []Item `json:"stocks"`
 }
 
-type Handler struct{}
-
-func New() *Handler {
-	return &Handler{}
+type Handler struct {
+	businessLogic *domain.Model
 }
 
+func New(businessLogic *domain.Model) *Handler {
+	return &Handler{
+		businessLogic: businessLogic,
+	}
+}
 func (h *Handler) Handle(ctx context.Context, request Request) (Response, error) {
 	log.Printf("stocks: %+v", request)
-	return Response{
-		Stocks: []Item{
-			{
-				WarehouseID: 123,
-				Count:       5,
-			},
-		},
-	}, nil
+
+	var response Response
+	err := h.businessLogic.Stocks(ctx, request.SKU)
+	if err != nil {
+		return response, err
+	}
+
+	return response, nil
+
 }

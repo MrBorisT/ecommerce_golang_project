@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"route256/loms/internal/domain"
 )
 
 type Request struct {
@@ -25,14 +26,24 @@ var (
 type Response struct {
 }
 
-type Handler struct{}
+type Handler struct {
+	businessLogic *domain.Model
+}
 
-func New() *Handler {
-	return &Handler{}
+func New(businessLogic *domain.Model) *Handler {
+	return &Handler{
+		businessLogic: businessLogic,
+	}
 }
 
 func (h *Handler) Handle(ctx context.Context, request Request) (Response, error) {
 	log.Printf("cancel order: %+v", request)
 
-	return Response{}, nil
+	var response Response
+	err := h.businessLogic.CancelOrder(ctx, request.OrderID)
+	if err != nil {
+		return response, err
+	}
+
+	return response, nil
 }

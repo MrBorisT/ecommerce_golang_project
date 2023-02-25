@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"route256/loms/internal/domain"
 )
 
 type Request struct {
@@ -36,16 +37,24 @@ type Response struct {
 	OrderID int64 `json:"orderID"`
 }
 
-type Handler struct{}
+type Handler struct {
+	businessLogic *domain.Model
+}
 
-func New() *Handler {
-	return &Handler{}
+func New(businessLogic *domain.Model) *Handler {
+	return &Handler{
+		businessLogic: businessLogic,
+	}
 }
 
 func (h *Handler) Handle(ctx context.Context, request Request) (Response, error) {
 	log.Printf("create order: %+v", request)
 
-	return Response{
-		OrderID: 69,
-	}, nil
+	var response Response
+	err := h.businessLogic.CreateOrder(ctx, request.User, request.Items)
+	if err != nil {
+		return response, err
+	}
+
+	return response, nil
 }
