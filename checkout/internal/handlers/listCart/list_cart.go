@@ -39,7 +39,7 @@ type Response struct {
 }
 
 func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {
-	log.Printf("deleteFromCart: %+v", req)
+	log.Printf("listCart: %+v", req)
 
 	var response Response
 
