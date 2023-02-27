@@ -50,10 +50,10 @@ get-go-deps:
 	go get -u google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
 generate:
-	mkdir -p pkg/product_v1
-	protoc -I api/product/v1 \
-	--go_out=pkg/product_v1 --go_opt=paths=source_relative \
+	mkdir -p pkg/product
+	protoc -I api/product \
+	--go_out=pkg/product --go_opt=paths=source_relative \
 	--plugin=protoc-gen-go=bin/protoc-gen-go \
-	--go-grpc_out=pkg/product_v1 --go-grpc_opt=paths=source_relative \
+	--go-grpc_out=pkg/product --go-grpc_opt=paths=source_relative \
 	--plugin=protoc-gen-go-grpc=bin/protoc-gen-go-grpc \
-	api/product/v1/product-service.proto
+	api/product/product-service.proto
