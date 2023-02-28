@@ -2,9 +2,10 @@ package deletefromcart
 
 import (
 	"context"
-	"errors"
 	"log"
 	"route256/checkout/internal/domain"
+
+	"github.com/pkg/errors"
 )
 
 type Handler struct {

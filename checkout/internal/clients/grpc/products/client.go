@@ -4,6 +4,7 @@ import (
 	"context"
 	productServiceAPI "route256/checkout/pkg/product"
 
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
@@ -30,7 +31,7 @@ func (c *client) GetProduct(ctx context.Context, sku uint32) (string, uint32, er
 		Sku:   sku,
 	})
 	if err != nil {
-		return "", 0, err
+		return "", 0, errors.WithMessage(err, "rpc get product")
 	}
 
 	return res.GetName(), res.GetPrice(), nil
@@ -43,7 +44,7 @@ func (c *client) ListSkus(ctx context.Context, start_after_sku, count uint32) ([
 		Count:         count,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "rpc list skus")
 	}
 
 	return res.GetSkus(), nil

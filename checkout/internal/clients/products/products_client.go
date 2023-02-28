@@ -6,6 +6,7 @@ import (
 	"route256/checkout/internal/domain"
 	"time"
 
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -25,7 +26,7 @@ func New(address, token string) *Client {
 func (c *Client) Product(ctx context.Context, sku uint32) (*domain.Product, error) {
 	conn, err := grpc.Dial(c.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "grpc dial")
 	}
 
 	defer conn.Close()

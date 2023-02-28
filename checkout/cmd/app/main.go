@@ -36,7 +36,7 @@ func main() {
 	http.Handle("/listCart", srvwrapper.New(listCart.Handle))
 	http.Handle("/purchase", srvwrapper.New(purchase.Handle))
 
-	log.Println("listening http at", port)
+	log.Println("listening http at:", port)
 	err = http.ListenAndServe(port, nil)
-	log.Fatal("cannot listen http", err)
+	log.Fatal("cannot listen http:", err)
 }
