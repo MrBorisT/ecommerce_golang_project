@@ -32,10 +32,10 @@ func (c *Client) Product(ctx context.Context, sku uint32) (*domain.Product, erro
 	defer conn.Close()
 
 	client := productsClient.NewClient(conn, c.token)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 
-	name, price, err := client.GetProduct(ctx, sku)
+	name, price, err := client.GetProduct(ctxWithTimeout, sku)
 	if err != nil {
 		return nil, err
 	}
