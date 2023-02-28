@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"log"
 
 	"github.com/pkg/errors"
 )
@@ -24,8 +25,8 @@ func (m *Model) ListCart(ctx context.Context, user int64) error {
 		Price uint32
 	}{
 		{
-			SKU:   69,
-			Count: 69,
+			SKU:   773297411,
+			Count: 1,
 		},
 	}
 
@@ -36,6 +37,7 @@ func (m *Model) ListCart(ctx context.Context, user int64) error {
 		}
 		DUMMY_CART[i].Name = productInfo.Name
 		DUMMY_CART[i].Price = productInfo.Price
+		log.Println("got product from grcp:", productInfo)
 	}
 
 	return nil

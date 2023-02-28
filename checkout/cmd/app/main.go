@@ -14,16 +14,15 @@ import (
 	"route256/libs/srvwrapper"
 )
 
-const port = ":8080"
-
 func main() {
 	err := config.Init()
 	if err != nil {
-		log.Fatal("config init", err)
+		log.Fatal("config init ", err)
 	}
 
 	lomsClient := loms.New(config.ConfigData.Services.Loms)
 	productClient := product.New(config.ConfigData.Services.ProductService, config.ConfigData.Token)
+	port := config.ConfigData.Port
 
 	businessLogic := domain.New(lomsClient, productClient)
 
