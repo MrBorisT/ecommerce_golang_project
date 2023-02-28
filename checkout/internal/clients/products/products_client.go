@@ -2,47 +2,46 @@ package product
 
 import (
 	"context"
-	"fmt"
+	productsClient "route256/checkout/internal/clients/grpc/products"
 	"route256/checkout/internal/domain"
-	clientwrapper "route256/libs/client"
+	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Client struct {
-	url string
+	address string
+	token   string
 }
 
-func New(url string) *Client {
+func New(address, token string) *Client {
 	return &Client{
-		url: url,
+		address: address,
+		token:   token,
 	}
 }
 
-type ProductRequest struct {
-	Token string `json:"token"`
-	SKU   uint32 `json:"sku"`
-}
-
-type ProductItem struct {
-	Name  string `json:"name"`
-	Price uint32 `json:"price"`
-}
-
-type ProductResponse struct {
-	Product ProductItem `json:"product"`
-}
-
 func (c *Client) Product(ctx context.Context, sku uint32) (*domain.Product, error) {
-	request := ProductRequest{SKU: sku}
+	conn, err := grpc.Dial(c.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
 
-	//TODO maybe change Sprint?
-	response, err := clientwrapper.SendRequest[ProductRequest, ProductResponse](ctx, request, fmt.Sprint(sku))
+	defer conn.Close()
+
+	client := productsClient.NewClient(conn, c.token)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	name, price, err := client.GetProduct(ctx, sku)
 	if err != nil {
 		return nil, err
 	}
 
 	product := domain.Product{
-		Name:  response.Product.Name,
-		Price: response.Product.Price,
+		Name:  name,
+		Price: price,
 	}
 
 	return &product, nil

@@ -23,7 +23,7 @@ func main() {
 	}
 
 	lomsClient := loms.New(config.ConfigData.Services.Loms)
-	productClient := product.New(config.ConfigData.Services.ProductService)
+	productClient := product.New(config.ConfigData.Services.ProductService, config.ConfigData.Token)
 
 	businessLogic := domain.New(lomsClient, productClient)
 
