@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+option go_package="route256/loms/pkg/loms_v1";
+package loms_v1;
+
+service ProductService {
+    rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+    rpc OrderPayed(OrderPayedRequest) returns (OrderPayedResponse);
+    rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+}
+
+message Item {
+  uint32 sku = 1;
+  uint32 count = 2;
+}
+
+message CreateOrderRequest {
+  int64 user = 1;
+  repeated Item items = 2;
+}
+
+message CreateOrderResponse {
+  int64 orderID = 1;
+}
+
+message OrderPayedRequest {
+  int64 orderID = 1;
+}
+
+message OrderPayedResponse {
+}
+
+message CancelOrderRequest {
+  int64 orderID = 1;
+}
+
+message CancelOrderResponse {
+}

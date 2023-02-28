@@ -49,7 +49,9 @@ get-go-deps:
 	go get -u google.golang.org/protobuf/cmd/protoc-gen-go
 	go get -u google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
-generate:
+generate: generate-product generate-loms
+
+generate-product:
 	mkdir -p pkg/product
 	protoc -I api/product \
 	--go_out=pkg/product --go_opt=paths=source_relative \
@@ -57,3 +59,12 @@ generate:
 	--go-grpc_out=pkg/product --go-grpc_opt=paths=source_relative \
 	--plugin=protoc-gen-go-grpc=bin/protoc-gen-go-grpc \
 	api/product/product-service.proto
+
+generate-loms:
+	mkdir -p pkg/loms_v1
+	protoc -I api/loms/v1 \
+	--go_out=pkg/loms_v1 --go_opt=paths=source_relative \
+	--plugin=protoc-gen-go=bin/protoc-gen-go \
+	--go-grpc_out=pkg/loms_v1 --go-grpc_opt=paths=source_relative \
+	--plugin=protoc-gen-go-grpc=bin/protoc-gen-go-grpc \
+	api/loms/v1/loms_v1.proto
