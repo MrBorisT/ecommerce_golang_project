@@ -15,14 +15,21 @@ import (
 )
 
 func main() {
+	initConfig()
+	setupHandles()
+	startServer()
+}
+
+func initConfig() {
 	err := config.Init()
 	if err != nil {
-		log.Fatal("config init ", err)
+		log.Fatalln("config init: ", err)
 	}
+}
 
+func setupHandles() {
 	lomsClient := loms.New(config.ConfigData.Services.Loms)
 	productClient := product.New(config.ConfigData.Services.ProductService, config.ConfigData.Token)
-	port := config.ConfigData.Port
 
 	businessLogic := domain.New(lomsClient, productClient)
 
@@ -35,8 +42,14 @@ func main() {
 	http.Handle("/deleteFromCart", srvwrapper.New(deleteFromCart.Handle))
 	http.Handle("/listCart", srvwrapper.New(listCart.Handle))
 	http.Handle("/purchase", srvwrapper.New(purchase.Handle))
+}
 
-	log.Println("listening http at:", port)
-	err = http.ListenAndServe(port, nil)
-	log.Fatal("cannot listen http:", err)
+func startServer() {
+	port := config.ConfigData.Port
+
+	log.Println("listening http at: ", port)
+
+	if err := http.ListenAndServe(port, nil); err != nil {
+		log.Fatalln("cannot listen http: ", err)
+	}
 }
