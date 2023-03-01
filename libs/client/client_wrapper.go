@@ -20,6 +20,7 @@ func SendRequest[Req any, Res any](ctx context.Context, request Req, url string)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating http request")
 	}
+	httpRequest.Header.Add("Content-Type", "application/json")
 
 	httpResponse, err := http.DefaultClient.Do(httpRequest)
 	if err != nil {
