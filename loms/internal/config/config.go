@@ -8,7 +8,8 @@ import (
 )
 
 type ConfigStruct struct {
-	Port string `yaml:"port"`
+	Port     string `yaml:"port"`
+	GRPCPort string `yaml:"grpcPort"`
 }
 
 var ConfigData ConfigStruct
