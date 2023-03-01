@@ -1,11 +1,24 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"route256/checkout/internal/model"
+)
 
-type StocksChecker interface {
-	Stocks(ctx context.Context, sku uint32) ([]Stock, error)
+// LOMS Service
+type Order struct {
+	OrderID int64
 }
 
+type StocksChecker interface {
+	Stocks(ctx context.Context, sku uint32) ([]model.Stock, error)
+}
+
+type OrderCreator interface {
+	CreateOrder(ctx context.Context, user int64) (*Order, error)
+}
+
+// Product Service
 type ProductChecker interface {
 	Product(ctx context.Context, sku uint32) (*Product, error)
 }
