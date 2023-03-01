@@ -24,8 +24,8 @@ func convertItemsToModels(items []*desc.Item) []model.Item {
 
 	for _, item := range items {
 		convertedItems = append(convertedItems, model.Item{
-			SKU:   item.Sku,
-			Count: uint16(item.Count),
+			SKU:   item.GetSku(),
+			Count: uint16(item.GetCount()),
 		})
 	}
 
