@@ -2,8 +2,9 @@ package domain
 
 import (
 	"context"
+	"route256/loms/internal/model"
 )
 
-func (m *Model) Stocks(ctx context.Context, SKU uint32) error {
-	return nil
+func (m *service) Stocks(ctx context.Context, SKU uint32) ([]model.Stock, error) {
+	return nil, nil
 }

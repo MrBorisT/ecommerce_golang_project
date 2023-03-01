@@ -2,9 +2,10 @@ package main
 
 import (
 	"log"
+	"net"
 	"net/http"
-
 	"route256/libs/srvwrapper"
+	"route256/loms/internal/api/loms_v1"
 	"route256/loms/internal/config"
 	"route256/loms/internal/domain"
 	"route256/loms/internal/handlers/cancelorder"
@@ -12,6 +13,11 @@ import (
 	"route256/loms/internal/handlers/listorder"
 	"route256/loms/internal/handlers/orderpayed"
 	"route256/loms/internal/handlers/stockshandler"
+	desc "route256/loms/pkg/loms_v1"
+
+	"github.com/pkg/errors"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -22,6 +28,7 @@ func startApp() {
 	initConfig()
 	setupHandles()
 	startServer()
+	startGRPCServer()
 }
 
 func initConfig() {
@@ -34,7 +41,7 @@ func initConfig() {
 }
 
 func setupHandles() {
-	businessLogic := domain.New()
+	businessLogic := domain.NewService()
 
 	createOrder := createorder.New(businessLogic)
 	listOrder := listorder.New(businessLogic)
@@ -56,5 +63,26 @@ func startServer() {
 
 	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatalln("cannot listen http: ", err)
+	}
+}
+
+func startGRPCServer() {
+	lis, err := net.Listen("tcp", config.ConfigData.GRPCPort)
+
+	err = errors.WithMessage(err, "grpc server")
+
+	if err != nil {
+		log.Fatalln("failed to listen: ", err)
+	}
+
+	s := grpc.NewServer()
+
+	reflection.Register(s)
+	desc.RegisterLomsServiceServer(s, loms_v1.NewLomsV1(domain.NewService()))
+
+	log.Printf("listening at %v\n", lis.Addr())
+
+	if err = s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v\n", err)
 	}
 }

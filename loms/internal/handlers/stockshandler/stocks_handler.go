@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"route256/loms/internal/domain"
+	"route256/loms/internal/model"
 
 	"github.com/pkg/errors"
 )
@@ -24,20 +25,15 @@ var (
 	ErrEmptySKU = errors.New("empty sku")
 )
 
-type Item struct {
-	WarehouseID int64  `json:"warehouseID"`
-	Count       uint64 `json:"count"`
-}
-
 type Response struct {
-	Stocks []Item `json:"stocks"`
+	Stocks []model.Stock `json:"stocks"`
 }
 
 type Handler struct {
-	businessLogic *domain.Model
+	businessLogic domain.Service
 }
 
-func New(businessLogic *domain.Model) *Handler {
+func New(businessLogic domain.Service) *Handler {
 	return &Handler{
 		businessLogic: businessLogic,
 	}
@@ -46,10 +42,12 @@ func (h *Handler) Handle(ctx context.Context, request Request) (Response, error)
 	log.Printf("stocks: %+v", request)
 
 	var response Response
-	err := h.businessLogic.Stocks(ctx, request.SKU)
+	stocks, err := h.businessLogic.Stocks(ctx, request.SKU)
 	if err != nil {
 		return response, err
 	}
+
+	response.Stocks = stocks
 
 	return response, nil
 
