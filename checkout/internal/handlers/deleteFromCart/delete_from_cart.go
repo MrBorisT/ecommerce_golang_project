@@ -44,7 +44,6 @@ func (r Request) Validate() error {
 }
 
 type Response struct {
-	Test string `json:"test"`
 }
 
 func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {

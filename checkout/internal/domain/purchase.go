@@ -9,13 +9,20 @@ import (
 )
 
 func (m *Model) Purchase(ctx context.Context, user int64) error {
-	DUMMY_ITEMS := make([]model.Item, 0)
+	//TODO use cart of user with id "user"
+	DUMMY_ITEMS := make([]model.Item, 1)
+	DUMMY_ITEMS[0] = model.Item{
+		SKU:   773297411,
+		Count: 1,
+	}
+	//end of TODO
+
 	order, err := m.loms.CreateOrder(ctx, user, DUMMY_ITEMS)
 	if err != nil {
 		return errors.WithMessage(err, "creating order")
 	}
 
-	log.Printf("%v\n", order)
+	log.Printf("Created order: %v\n", order)
 
 	return nil
 }
