@@ -9,3 +9,8 @@ type Stock struct {
 	WarehouseID int64  `json:"warehouseID"`
 	Count       uint64 `json:"count"`
 }
+
+type Product struct {
+	Name  string
+	Price uint32
+}

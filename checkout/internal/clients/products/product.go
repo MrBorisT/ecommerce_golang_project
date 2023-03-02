@@ -3,7 +3,7 @@ package product
 import (
 	"context"
 	productsClient "route256/checkout/internal/clients/grpc/products"
-	"route256/checkout/internal/domain"
+	"route256/checkout/internal/model"
 	"time"
 
 	"github.com/pkg/errors"
@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func (c *Client) Product(ctx context.Context, sku uint32) (*domain.Product, error) {
+func (c *Client) Product(ctx context.Context, sku uint32) (*model.Product, error) {
 	conn, err := grpc.Dial(c.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, errors.WithMessage(err, "grpc dial")
@@ -28,7 +28,7 @@ func (c *Client) Product(ctx context.Context, sku uint32) (*domain.Product, erro
 		return nil, err
 	}
 
-	product := domain.Product{
+	product := model.Product{
 		Name:  name,
 		Price: price,
 	}

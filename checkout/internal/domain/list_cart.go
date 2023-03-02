@@ -7,11 +7,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Product struct {
-	Name  string
-	Price uint32
-}
-
 var (
 	ErrInvalidSKU = errors.New("invalid SKU")
 )

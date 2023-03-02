@@ -20,7 +20,7 @@ type OrderCreator interface {
 
 // Product Service
 type ProductChecker interface {
-	Product(ctx context.Context, sku uint32) (*Product, error)
+	Product(ctx context.Context, sku uint32) (*model.Product, error)
 }
 
 type LOMS interface {
