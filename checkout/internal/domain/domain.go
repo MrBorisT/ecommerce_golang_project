@@ -6,21 +6,17 @@ import (
 )
 
 // LOMS Service
-type Order struct {
-	OrderID int64
-}
-
 type StocksChecker interface {
 	Stocks(ctx context.Context, sku uint32) ([]model.Stock, error)
 }
 
 type OrderCreator interface {
-	CreateOrder(ctx context.Context, user int64) (*Order, error)
+	CreateOrder(ctx context.Context, user int64, items []model.Item) (int64, error)
 }
 
 // Product Service
 type ProductChecker interface {
-	Product(ctx context.Context, sku uint32) (*model.Product, error)
+	GetProduct(ctx context.Context, sku uint32) (string, uint32, error)
 }
 
 type LOMS interface {

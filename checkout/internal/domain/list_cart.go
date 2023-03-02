@@ -2,7 +2,6 @@ package domain
 
 import (
 	"context"
-	"log"
 
 	"github.com/pkg/errors"
 )
@@ -26,13 +25,12 @@ func (m *Model) ListCart(ctx context.Context, user int64) error {
 	}
 
 	for i, cartItem := range DUMMY_CART {
-		productInfo, err := m.productChecker.Product(ctx, cartItem.SKU)
+		productName, productPrice, err := m.productChecker.GetProduct(ctx, cartItem.SKU)
 		if err != nil {
 			return errors.WithMessage(err, "checking product")
 		}
-		DUMMY_CART[i].Name = productInfo.Name
-		DUMMY_CART[i].Price = productInfo.Price
-		log.Println("got product from grcp:", productInfo)
+		DUMMY_CART[i].Name = productName
+		DUMMY_CART[i].Price = productPrice
 	}
 
 	return nil
