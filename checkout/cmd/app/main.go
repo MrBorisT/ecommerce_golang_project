@@ -70,7 +70,6 @@ func GetClientConn(address string) (*grpc.ClientConn, error) {
 }
 
 func CloseConnections(connections ...*grpc.ClientConn) {
-	connections = append(connections)
 	for _, connection := range connections {
 		connection.Close()
 	}
