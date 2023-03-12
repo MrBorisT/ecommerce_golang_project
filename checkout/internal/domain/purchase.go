@@ -15,7 +15,7 @@ func (m *CheckoutService) Purchase(ctx context.Context, user int64) error {
 	}
 	items := model.BindCartItemToItem(cart.Items)
 
-	order, err := m.Deps.CreateOrder(ctx, user, items)
+	order, err := m.LOMS.CreateOrder(ctx, user, items)
 	if err != nil {
 		return errors.WithMessage(err, "creating order")
 	}
