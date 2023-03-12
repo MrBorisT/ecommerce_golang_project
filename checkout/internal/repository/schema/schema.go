@@ -1,11 +1,7 @@
 package schema
 
-type Cart struct {
-	User  int64      `db:"user"`
-	Items []CartItem `db:"items"`
-}
-
-type CartItem struct {
+type CartItems struct {
+	UserID int64 `db:"user_id"`
 	SKU   uint32 `db:"sku"`
 	Count uint16 `db:"count"`
 }
