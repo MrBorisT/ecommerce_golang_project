@@ -14,6 +14,13 @@ type ConfigStruct struct {
 		Loms           string `yaml:"loms"`
 		ProductService string `yaml:"productService"`
 	} `yaml:"services"`
+	DB struct {
+		Host     string `yaml:"host"`
+		Port     int    `yaml:"port"`
+		User     string `yaml:"user"`
+		Password string `yaml:"password"`
+		Name     string `yaml:"dbname"`
+	}
 }
 
 var ConfigData ConfigStruct

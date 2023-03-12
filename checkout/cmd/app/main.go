@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"route256/checkout/internal/clients/grpc/loms"
@@ -11,8 +13,10 @@ import (
 	deletefromcart "route256/checkout/internal/handlers/deleteFromCart"
 	listcart "route256/checkout/internal/handlers/listCart"
 	"route256/checkout/internal/handlers/purchase"
+	repository "route256/checkout/internal/repository/postgres"
 	"route256/libs/srvwrapper"
 
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -22,7 +26,9 @@ func main() {
 	initConfig()
 	lomsConn, productConn := ConnectToGRPCServices()
 	defer CloseConnections(lomsConn, productConn)
-	setupHandles(lomsConn, productConn)
+	pool := OpenDB()
+	defer pool.Close()
+	setupHandles(lomsConn, productConn, pool)
 	startServer()
 }
 
@@ -33,14 +39,39 @@ func initConfig() {
 	}
 }
 
-func setupHandles(lomsConn, productConn *grpc.ClientConn) {
+func OpenDB() *pgxpool.Pool {
+	ctx := context.Background()
+
+	// connection string
+	psqlConn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		config.ConfigData.DB.Host,
+		config.ConfigData.DB.Port,
+		config.ConfigData.DB.User,
+		config.ConfigData.DB.Password,
+		config.ConfigData.DB.Name,
+	)
+
+	pool, err := pgxpool.Connect(ctx, psqlConn)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := pool.Ping(ctx); err != nil {
+		log.Fatal(err)
+	}
+
+	return pool
+}
+
+func setupHandles(lomsConn, productConn *grpc.ClientConn, pool *pgxpool.Pool) {
 	lomsClient := loms.NewClient(lomsConn)
 	productClient := productsClient.NewClient(productConn, config.ConfigData.Token)
+	repository := repository.NewCartRepo(pool)
 
 	businessLogic := domain.NewCheckoutService(domain.Deps{
 		LOMS:           lomsClient,
 		ProductChecker: productClient,
-		CartRepository: nil,
+		CartRepository: repository,
 	})
 
 	addToCartHandler := addtocart.New(businessLogic)
