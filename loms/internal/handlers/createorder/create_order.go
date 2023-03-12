@@ -2,14 +2,16 @@ package createorder
 
 import (
 	"context"
-	"errors"
 	"log"
 	"route256/loms/internal/domain"
+	"route256/loms/internal/model"
+
+	"github.com/pkg/errors"
 )
 
 type Request struct {
-	User  int64  `json:"user"`
-	Items []Item `json:"items"`
+	User  int64        `json:"user"`
+	Items []model.Item `json:"items"`
 }
 
 func (r Request) Validate() error {
@@ -28,20 +30,15 @@ var (
 	ErrEmptyItems = errors.New("empty items")
 )
 
-type Item struct {
-	SKU   uint32 `json:"sku"`
-	Count uint16 `json:"count"`
-}
-
 type Response struct {
 	OrderID int64 `json:"orderID"`
 }
 
 type Handler struct {
-	businessLogic *domain.Model
+	businessLogic domain.Service
 }
 
-func New(businessLogic *domain.Model) *Handler {
+func New(businessLogic domain.Service) *Handler {
 	return &Handler{
 		businessLogic: businessLogic,
 	}
@@ -51,10 +48,12 @@ func (h *Handler) Handle(ctx context.Context, request Request) (Response, error)
 	log.Printf("create order: %+v", request)
 
 	var response Response
-	err := h.businessLogic.CreateOrder(ctx, request.User, request.Items)
+	orderID, err := h.businessLogic.CreateOrder(ctx, request.User, request.Items)
 	if err != nil {
 		return response, err
 	}
+
+	response.OrderID = orderID
 
 	return response, nil
 }

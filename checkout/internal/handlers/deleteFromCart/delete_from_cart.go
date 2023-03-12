@@ -2,9 +2,10 @@ package deletefromcart
 
 import (
 	"context"
-	"errors"
 	"log"
 	"route256/checkout/internal/domain"
+
+	"github.com/pkg/errors"
 )
 
 type Handler struct {
@@ -43,7 +44,6 @@ func (r Request) Validate() error {
 }
 
 type Response struct {
-	Test string `json:"test"`
 }
 
 func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {

@@ -2,41 +2,39 @@ package domain
 
 import (
 	"context"
+	"route256/checkout/internal/model"
 
 	"github.com/pkg/errors"
 )
 
-type Product struct {
-	Name  string
-	Price uint32
-}
-
-var (
-	ErrInvalidSKU = errors.New("invalid SKU")
-)
-
-func (m *Model) ListCart(ctx context.Context, user int64) error {
-	//TODO get cart from user
-	DUMMY_CART := []struct {
-		SKU   uint32
-		Count uint16
-		Name  string
-		Price uint32
-	}{
+func (m *Model) ListCart(ctx context.Context, user int64) ([]model.Item, uint32, error) {
+	//TODO use cart of user with id "user"
+	DUMMY_CART := []model.Item{
 		{
-			SKU:   69,
-			Count: 69,
+			SKU:   773297411,
+			Count: 1,
 		},
 	}
 
 	for i, cartItem := range DUMMY_CART {
-		productInfo, err := m.productChecker.Product(ctx, cartItem.SKU)
+		productName, productPrice, err := m.productChecker.GetProduct(ctx, cartItem.SKU)
 		if err != nil {
-			return errors.WithMessage(err, "checking product")
+			return nil, 0, errors.WithMessage(err, "checking product")
 		}
-		DUMMY_CART[i].Name = productInfo.Name
-		DUMMY_CART[i].Price = productInfo.Price
+		DUMMY_CART[i].Name = productName
+		DUMMY_CART[i].Price = productPrice
 	}
 
-	return nil
+	return DUMMY_CART, GetTotalPrice(DUMMY_CART), nil
+	//end of TODO
+}
+
+func GetTotalPrice(items []model.Item) uint32 {
+	var totalPrice uint32
+
+	for _, item := range items {
+		totalPrice += item.Price * uint32(item.Count)
+	}
+
+	return totalPrice
 }

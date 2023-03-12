@@ -2,9 +2,11 @@ package listcart
 
 import (
 	"context"
-	"errors"
 	"log"
 	"route256/checkout/internal/domain"
+	"route256/checkout/internal/model"
+
+	"github.com/pkg/errors"
 )
 
 type Handler struct {
@@ -35,7 +37,8 @@ func (r Request) Validate() error {
 }
 
 type Response struct {
-	Test string `json:"test"`
+	Items      []model.Item `json:"items"`
+	TotalPrice uint32       `json:"total_price"`
 }
 
 func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {
@@ -43,10 +46,13 @@ func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {
 
 	var response Response
 
-	err := h.businessLogic.ListCart(ctx, req.User)
+	items, totalPrice, err := h.businessLogic.ListCart(ctx, req.User)
 	if err != nil {
 		return response, err
 	}
+
+	response.Items = items
+	response.TotalPrice = totalPrice
 
 	return response, nil
 }

@@ -2,9 +2,10 @@ package orderpayed
 
 import (
 	"context"
-	"errors"
 	"log"
 	"route256/loms/internal/domain"
+
+	"github.com/pkg/errors"
 )
 
 type Request struct {
@@ -27,10 +28,10 @@ type Response struct {
 }
 
 type Handler struct {
-	businessLogic *domain.Model
+	businessLogic domain.Service
 }
 
-func New(businessLogic *domain.Model) *Handler {
+func New(businessLogic domain.Service) *Handler {
 	return &Handler{
 		businessLogic: businessLogic,
 	}

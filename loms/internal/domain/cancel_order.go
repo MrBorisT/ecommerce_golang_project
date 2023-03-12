@@ -4,6 +4,6 @@ import (
 	"context"
 )
 
-func (m *Model) CancelOrder(ctx context.Context, orderID int64) error {
+func (m *service) CancelOrder(ctx context.Context, orderID int64) error {
 	return nil
 }

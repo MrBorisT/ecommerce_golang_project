@@ -2,8 +2,9 @@ package domain
 
 import (
 	"context"
+	"route256/loms/internal/model"
 )
 
-func (m *Model) CreateOrder(ctx context.Context, user int64, items any) error {
-	return nil
+func (m *service) CreateOrder(ctx context.Context, user int64, items []model.Item) (int64, error) {
+	return 0, nil
 }
