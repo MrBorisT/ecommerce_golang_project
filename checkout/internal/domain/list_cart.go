@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (m *Model) ListCart(ctx context.Context, user int64) ([]model.Item, uint32, error) {
+func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Item, uint32, error) {
 	//TODO use cart of user with id "user"
 	DUMMY_CART := []model.Item{
 		{
@@ -17,7 +17,7 @@ func (m *Model) ListCart(ctx context.Context, user int64) ([]model.Item, uint32,
 	}
 
 	for i, cartItem := range DUMMY_CART {
-		productName, productPrice, err := m.productChecker.GetProduct(ctx, cartItem.SKU)
+		productName, productPrice, err := m.Deps.GetProduct(ctx, cartItem.SKU)
 		if err != nil {
 			return nil, 0, errors.WithMessage(err, "checking product")
 		}

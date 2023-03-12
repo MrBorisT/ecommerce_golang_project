@@ -10,10 +10,10 @@ import (
 )
 
 type Handler struct {
-	businessLogic *domain.Model
+	businessLogic *domain.CheckoutService
 }
 
-func New(businessLogic *domain.Model) *Handler {
+func New(businessLogic *domain.CheckoutService) *Handler {
 	return &Handler{
 		businessLogic: businessLogic,
 	}

@@ -37,7 +37,11 @@ func setupHandles(lomsConn, productConn *grpc.ClientConn) {
 	lomsClient := loms.NewClient(lomsConn)
 	productClient := productsClient.NewClient(productConn, config.ConfigData.Token)
 
-	businessLogic := domain.New(lomsClient, productClient)
+	businessLogic := domain.NewCheckoutService(domain.Deps{
+		LOMS:           lomsClient,
+		ProductChecker: productClient,
+		CartRepository: nil,
+	})
 
 	addToCartHandler := addtocart.New(businessLogic)
 	deleteFromCart := deletefromcart.New(businessLogic)
