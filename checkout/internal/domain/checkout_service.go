@@ -27,7 +27,7 @@ type LOMS interface {
 type CartRepository interface {
 	AddToCart(ctx context.Context, user int64, sku uint32, count uint16) error
 	DeleteFromCart(ctx context.Context, user int64, sku uint32, count uint16) error
-	ListCart(ctx context.Context, user int64) ([]model.Item, uint32, error)
+	ListCart(ctx context.Context, user int64) (*model.Cart, error)
 	Purchase(ctx context.Context, user int64) error
 }
 
