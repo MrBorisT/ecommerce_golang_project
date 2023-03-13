@@ -5,5 +5,5 @@ import (
 )
 
 func (m *service) CancelOrder(ctx context.Context, orderID int64) error {
-	return nil
+	return m.OrderRepository.CancelOrder(ctx, orderID)
 }

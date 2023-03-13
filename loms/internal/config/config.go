@@ -10,6 +10,13 @@ import (
 type ConfigStruct struct {
 	Port     string `yaml:"port"`
 	GRPCPort string `yaml:"grpcPort"`
+	DB       struct {
+		Host     string `yaml:"host"`
+		Port     int    `yaml:"port"`
+		User     string `yaml:"user"`
+		Password string `yaml:"password"`
+		Name     string `yaml:"dbname"`
+	}
 }
 
 var ConfigData ConfigStruct
