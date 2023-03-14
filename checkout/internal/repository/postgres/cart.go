@@ -62,11 +62,16 @@ func (r *cartRepo) DeleteFromCart(ctx context.Context, user int64, sku uint32, c
 	}
 
 	if countAfterUpdate <= 0 {
-		const deleteQuery = `
-	DELETE FROM cart_items
-	WHERE user_id = $1 AND sku = $2`
+		deleteQuery :=
+			sq.Delete(itemsTable).
+				Where(sq.And{sq.Eq{"user_id": user}, sq.Eq{"sku": sku}})
 
-		_, err := r.pool.Query(ctx, deleteQuery, user, sku)
+		deleteQueryRaw, deleteArgs, err := deleteQuery.ToSql()
+		if err != nil {
+			return err
+		}
+
+		_, err = r.pool.Query(ctx, deleteQueryRaw, deleteArgs...)
 		return err
 	}
 
@@ -76,7 +81,7 @@ func (r *cartRepo) DeleteFromCart(ctx context.Context, user int64, sku uint32, c
 func (r *cartRepo) ListCart(ctx context.Context, user int64) (*model.Cart, error) {
 	query := sq.Select("sku", "count").
 		From(itemsTable).
-		Where("user_id = ?", user)
+		Where(sq.Eq{"user_id": user})
 
 	queryRaw, args, err := query.ToSql()
 	if err != nil {
@@ -110,7 +115,7 @@ func (r *cartRepo) ListCart(ctx context.Context, user int64) (*model.Cart, error
 
 func (r *cartRepo) Purchase(ctx context.Context, user int64) error {
 	query := sq.Delete(itemsTable).
-		Where("user_id", user)
+		Where(sq.Eq{"user_id": user})
 
 	queryRaw, args, err := query.ToSql()
 	if err != nil {
