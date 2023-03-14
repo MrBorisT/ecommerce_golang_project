@@ -3,36 +3,56 @@ package repository
 import (
 	"context"
 	"route256/loms/internal/model"
+	"route256/loms/internal/repository/postgres/transactor"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	sq "github.com/Masterminds/squirrel"
 )
 
 type OrdersRepo struct {
-	pool *pgxpool.Pool
+	transactor.QueryEngineProvider
 }
 
-func NewOrdersRepo(pool *pgxpool.Pool) *OrdersRepo {
+func NewOrdersRepo(provider transactor.QueryEngineProvider) *OrdersRepo {
 	return &OrdersRepo{
-		pool: pool,
+		QueryEngineProvider: provider,
 	}
 }
 
-func (r *OrdersRepo) CancelOrder(ctx context.Context, orderID int64) error {
-	const query = `
-	DELETE FROM orders
-	WHERE order_id = $1`
+const ordersTable = "orders"
 
-	_, err := r.pool.Query(ctx, query, orderID)
+func (r *OrdersRepo) CancelOrder(ctx context.Context, orderID int64) error {
+	db := r.QueryEngineProvider.GetQueryEngine(ctx)
+	query :=
+		sq.Delete(ordersTable).
+			Where(sq.Eq{"orders": orderID})
+
+	queryRaw, args, err := query.ToSql()
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Query(ctx, queryRaw, args...)
 	return err
 }
 
 func (r *OrdersRepo) CreateOrder(ctx context.Context, user int64, items []model.Item) (int64, error) {
-	const queryCreateOrder = `
-	INSERT INTO orders (status, user_id)
-	VALUES ('new', $1)
-	RETURNING id`
+	db := r.QueryEngineProvider.GetQueryEngine(ctx)
+	queryCreateOrder :=
+		sq.Insert(ordersTable).
+			Columns("status", "user_id").
+			Values("new", user).
+			Suffix("RETURNING id")
 
-	row := r.pool.QueryRow(ctx, queryCreateOrder, user)
+	queryCreateOrderRaw, args, err := queryCreateOrder.ToSql()
+	if err != nil {
+		return 0, nil
+	}
+
+	row, err := db.Query(ctx, queryCreateOrderRaw, args...)
+
+	if err != nil {
+		return 0, err
+	}
 
 	var orderID int64
 
@@ -41,10 +61,16 @@ func (r *OrdersRepo) CreateOrder(ctx context.Context, user int64, items []model.
 	}
 
 	for _, item := range items {
-		const queryCreateOrderItems = `
-	INSERT INTO order_items (order_id, sku, count)
-	VALUES ($1, $2, $3)`
-		_, err := r.pool.Query(ctx, queryCreateOrderItems, orderID, item.SKU, item.Count)
+		queryCreateOrderItems := sq.Insert(ordersTable).
+			Columns("order_id", "sku", "count").
+			Values(orderID, item.SKU, item.Count)
+
+		queryCreateOrderItemsRaw, args, err := queryCreateOrderItems.ToSql()
+		if err != nil {
+			return 0, err
+		}
+
+		_, err = db.Query(ctx, queryCreateOrderItemsRaw, args...)
 		if err != nil {
 			return orderID, err
 		}
@@ -53,12 +79,16 @@ func (r *OrdersRepo) CreateOrder(ctx context.Context, user int64, items []model.
 	return orderID, nil
 }
 func (r *OrdersRepo) ListOrder(ctx context.Context, orderID int64) (string, int64, []model.Item, error) {
+	db := r.QueryEngineProvider.GetQueryEngine(ctx)
 	const query = `
 	SELECT status, user_id
 	FROM order
 	WHERE id = $1`
 
-	row := r.pool.QueryRow(ctx, query, orderID)
+	row, err := db.Query(ctx, query, orderID)
+	if err != nil {
+		return "", 0, nil, err
+	}
 
 	var status string
 	var userID int64
@@ -72,7 +102,7 @@ func (r *OrdersRepo) ListOrder(ctx context.Context, orderID int64) (string, int6
 	FROM order_items
 	WHERE order_id = $1`
 
-	rowsItems, err := r.pool.Query(ctx, queryItems, orderID)
+	rowsItems, err := db.Query(ctx, queryItems, orderID)
 
 	if err != nil {
 		return status, userID, nil, err
@@ -94,12 +124,18 @@ func (r *OrdersRepo) ListOrder(ctx context.Context, orderID int64) (string, int6
 	return status, userID, items, nil
 }
 func (r *OrdersRepo) OrderPayed(ctx context.Context, orderID int64) error {
-	const query = `
-	UPDATE orders
-	SET status = 'payed'
-	WHERE id = $1`
+	db := r.QueryEngineProvider.GetQueryEngine(ctx)
+	query :=
+		sq.Update(ordersTable).
+			Set("status", "payed").
+			Where(sq.Eq{"id": orderID})
 
-	_, err := r.pool.Query(ctx, query, orderID)
+	queryRaw, args, err := query.ToSql()
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Query(ctx, queryRaw, args...)
 
 	return err
 }

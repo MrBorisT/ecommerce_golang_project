@@ -26,9 +26,14 @@ type StockRepository interface {
 	UnreserveStocks(ctx context.Context, SKU uint32, count uint16) error
 }
 
+type TransactionManager interface {
+	RunRepeatableRead(ctx context.Context, f func(ctxTX context.Context) error) error
+}
+
 type Deps struct {
 	OrderRepository
 	StockRepository
+	TransactionManager
 }
 
 type service struct {
