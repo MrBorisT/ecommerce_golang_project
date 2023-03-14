@@ -72,7 +72,7 @@ func (r *OrdersRepo) ListOrder(ctx context.Context, orderID int64) (string, int6
 	FROM order_items
 	WHERE order_id = $1`
 
-	rowsItems, err := r.pool.Query(ctx, query, orderID)
+	rowsItems, err := r.pool.Query(ctx, queryItems, orderID)
 
 	if err != nil {
 		return status, userID, nil, err

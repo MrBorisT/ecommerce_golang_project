@@ -3,7 +3,8 @@
 CREATE TABLE IF NOT EXISTS stocks (
     warehouse_id bigint PRIMARY KEY,
     sku integer NOT NULL,
-    count bigint NOT NULL    
+    count bigint NOT NULL,
+    reserved boolean NOT NULL
 );
 -- +goose StatementEnd
 
