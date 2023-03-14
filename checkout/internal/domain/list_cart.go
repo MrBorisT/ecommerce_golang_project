@@ -20,9 +20,9 @@ func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Ite
 			return nil, 0, errors.WithMessage(err, "checking product")
 		}
 		items = append(items, model.Item{
-			SKU: cartItem.SKU,
+			SKU:   cartItem.SKU,
 			Count: cartItem.Count,
-			Name: productName,
+			Name:  productName,
 			Price: productPrice,
 		})
 	}
