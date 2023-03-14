@@ -22,6 +22,8 @@ type OrderRepository interface {
 
 type StockRepository interface {
 	Stocks(ctx context.Context, SKU uint32) ([]model.Stock, error)
+	ReserveStocks(ctx context.Context, SKU uint32, count uint16) error
+	UnreserveStocks(ctx context.Context, SKU uint32, count uint16) error
 }
 
 type Deps struct {

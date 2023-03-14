@@ -40,3 +40,11 @@ func (r *StocksRepo) Stocks(ctx context.Context, SKU uint32) ([]model.Stock, err
 
 	return stocks, nil
 }
+
+func (r *StocksRepo) ReserveStocks(ctx context.Context, SKU uint32, count uint16) error {
+	return nil
+}
+
+func (r *StocksRepo) UnreserveStocks(ctx context.Context, SKU uint32, count uint16) error {
+	return nil
+}

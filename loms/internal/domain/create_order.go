@@ -6,5 +6,16 @@ import (
 )
 
 func (m *service) CreateOrder(ctx context.Context, user int64, items []model.Item) (int64, error) {
-	return m.OrderRepository.CreateOrder(ctx, user, items)
+	for _, item := range items {
+		if err := m.StockRepository.ReserveStocks(ctx, item.SKU, item.Count); err != nil {
+			return 0, err
+		}
+	}
+
+	orderID, err := m.OrderRepository.CreateOrder(ctx, user, items)
+	if err != nil {
+		return 0, err
+	}
+
+	return orderID, nil
 }
