@@ -67,5 +67,8 @@ func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Ite
 	batchingPool.Close()
 	wg.Wait()
 
+	if err != nil {
+		return nil, 0, err
+	}
 	return items, totalPrice, nil
 }
