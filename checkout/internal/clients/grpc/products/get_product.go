@@ -8,8 +8,9 @@ import (
 )
 
 func (c *client) GetProduct(ctx context.Context, sku uint32) (string, uint32, error) {
-	res, err := c.productClient.GetProduct(ctx, &productServiceAPI.GetProductRequest{
-		Token: c.token,
+	c.Limiter.Wait(ctx)
+	res, err := c.ProductClient.GetProduct(ctx, &productServiceAPI.GetProductRequest{
+		Token: c.Token,
 		Sku:   sku,
 	})
 	if err != nil {

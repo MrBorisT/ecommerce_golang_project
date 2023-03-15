@@ -14,10 +14,13 @@ import (
 	listcart "route256/checkout/internal/handlers/listCart"
 	"route256/checkout/internal/handlers/purchase"
 	repository "route256/checkout/internal/repository/postgres"
+	productServiceAPI "route256/checkout/pkg/product"
 	"route256/libs/srvwrapper"
+	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
+	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -65,7 +68,14 @@ func OpenDB() *pgxpool.Pool {
 
 func setupHandles(lomsConn, productConn *grpc.ClientConn, pool *pgxpool.Pool) {
 	lomsClient := loms.NewClient(lomsConn)
-	productClient := productsClient.NewClient(productConn, config.ConfigData.Token)
+	psClient := productServiceAPI.NewProductServiceClient(productConn)
+	limiter := rate.NewLimiter(rate.Every(time.Second*1), 10)
+	deps := productsClient.Deps{
+		ProductClient: psClient,
+		Token:         config.ConfigData.Token,
+		Limiter:       limiter,
+	}
+	productClient := productsClient.NewClient(deps)
 	repository := repository.NewCartRepo(pool)
 
 	businessLogic := domain.NewCheckoutService(domain.Deps{
