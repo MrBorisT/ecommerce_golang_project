@@ -25,6 +25,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+const DEFAULT_RPS = 10
+
 func main() {
 	initConfig()
 	lomsConn, productConn := ConnectToGRPCServices()
@@ -69,7 +71,7 @@ func OpenDB() *pgxpool.Pool {
 func setupHandles(lomsConn, productConn *grpc.ClientConn, pool *pgxpool.Pool) {
 	lomsClient := loms.NewClient(lomsConn)
 	psClient := productServiceAPI.NewProductServiceClient(productConn)
-	limiter := rate.NewLimiter(rate.Every(time.Second*1), 10)
+	limiter := rate.NewLimiter(rate.Every(time.Second*1), DEFAULT_RPS)
 	deps := productsClient.Deps{
 		ProductClient: psClient,
 		Token:         config.ConfigData.Token,
