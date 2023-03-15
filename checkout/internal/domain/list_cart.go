@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 )
 
+const DEFAULT_AMOUNT_WORKERS = 5
+
 type ItemResponse struct {
 	item *model.Item
 	err  error
@@ -30,9 +32,9 @@ func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Ite
 
 	// Setting workers amount from config.yml
 	amountWorkers := config.ConfigData.MaxWorkers
-	// if set incorrectly - set to 5 workers
+	// if set incorrectly - set to DEFAULT_AMOUNT_WORKERS workers
 	if amountWorkers <= 0 {
-		amountWorkers = 5
+		amountWorkers = DEFAULT_AMOUNT_WORKERS
 	}
 
 	// For task generics (in Task[] brackets):
