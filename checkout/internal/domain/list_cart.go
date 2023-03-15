@@ -2,17 +2,25 @@ package domain
 
 import (
 	"context"
+	"route256/checkout/internal/config"
 	"route256/checkout/internal/model"
 	"route256/libs/pool/batch"
 	"sync"
+	"sync/atomic"
 )
 
-type TaskResponse struct {
-	*model.Item
-	error
+type ItemResponse struct {
+	item *model.Item
+	err  error
+}
+
+type ItemRequest struct {
+	ctx  context.Context
+	item model.CartItem
 }
 
 func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Item, uint32, error) {
+	// Getting cart of the user (by user's ID)
 	cart, err := m.CartRepository.ListCart(ctx, user)
 	if err != nil {
 		return nil, 0, err
@@ -20,32 +28,33 @@ func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Ite
 
 	items := make([]model.Item, 0, len(cart.Items))
 
-	amountWorkers := 5
+	// Setting workers amount from config.yml
+	amountWorkers := config.ConfigData.MaxWorkers
+	// if set incorrectly - set to 5 workers
+	if amountWorkers <= 0 {
+		amountWorkers = 5
+	}
 
-	tasks := make([]batch.Task[model.CartItem, TaskResponse], 0, len(cart.Items))
+	// For task generics (in Task[] brackets):
+	// - ItemRequest: context and cart item (with sku and count info)
+	// - ItemResponse: full item info (sku, count, name and price) and an error
+	tasks := make([]batch.Task[ItemRequest, ItemResponse], 0, len(cart.Items))
 
+	// Creating every a task for every cart item
 	for _, cartItem := range cart.Items {
-		tasks = append(tasks, batch.Task[model.CartItem, TaskResponse]{
-			Callback: func(cartItem model.CartItem) TaskResponse {
-				productName, productPrice, err := m.ProductChecker.GetProduct(ctx, cartItem.SKU)
-				if err != nil {
-					return TaskResponse{nil, err}
-				}
-				return TaskResponse{
-					&model.Item{
-						SKU:   cartItem.SKU,
-						Count: cartItem.Count,
-						Name:  productName,
-						Price: productPrice,
-					},
-					nil,
-				}
-			},
-			InArgs: cartItem,
+		itemReq := ItemRequest{
+			ctx,
+			cartItem,
+		}
+		tasks = append(tasks, batch.Task[ItemRequest, ItemResponse]{
+			Callback: m.getItemInfo,
+			InArgs:   itemReq,
 		})
 	}
 
-	batchingPool, results := batch.NewPool[model.CartItem, TaskResponse](ctx, amountWorkers)
+	// creating worker pool
+	// and a result channel
+	batchingPool, results := batch.NewPool[ItemRequest, ItemResponse](ctx, amountWorkers)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -53,14 +62,17 @@ func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Ite
 
 	go func() {
 		for res := range results {
-			if res.error != nil {
-				err = res.error
+			if res.err != nil && err == nil {
+				err = res.err
 			}
-			items = append(items, *res.Item)
-			totalPrice += res.Price * uint32(res.Count)
+			items = append(items, *res.item)
+
+			// for race safety
+			atomic.AddUint32(&totalPrice, res.item.Price*uint32(res.item.Count))
 		}
 	}()
 
+	// run tasks in worker pool
 	batchingPool.Submit(ctx, tasks)
 
 	<-ctx.Done()
@@ -71,4 +83,21 @@ func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Ite
 		return nil, 0, err
 	}
 	return items, totalPrice, nil
+}
+
+func (m *CheckoutService) getItemInfo(req ItemRequest) ItemResponse {
+	productName, productPrice, err := m.ProductChecker.GetProduct(req.ctx, req.item.SKU)
+	if err != nil {
+		req.ctx.Done()
+		return ItemResponse{nil, err}
+	}
+	return ItemResponse{
+		&model.Item{
+			SKU:   req.item.SKU,
+			Count: req.item.Count,
+			Name:  productName,
+			Price: productPrice,
+		},
+		nil,
+	}
 }
