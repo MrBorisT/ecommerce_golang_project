@@ -3,9 +3,14 @@ package domain
 import (
 	"context"
 	"route256/checkout/internal/model"
-
-	"github.com/pkg/errors"
+	"route256/libs/pool/batch"
+	"sync"
 )
+
+type TaskResponse struct {
+	*model.Item
+	error
+}
 
 func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Item, uint32, error) {
 	cart, err := m.CartRepository.ListCart(ctx, user)
@@ -14,28 +19,53 @@ func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Ite
 	}
 
 	items := make([]model.Item, 0, len(cart.Items))
+
+	amountWorkers := 5
+
+	tasks := make([]batch.Task[model.CartItem, TaskResponse], 0, len(cart.Items))
+
 	for _, cartItem := range cart.Items {
-		productName, productPrice, err := m.ProductChecker.GetProduct(ctx, cartItem.SKU)
-		if err != nil {
-			return nil, 0, errors.WithMessage(err, "checking product")
-		}
-		items = append(items, model.Item{
-			SKU: cartItem.SKU,
-			Count: cartItem.Count,
-			Name: productName,
-			Price: productPrice,
+		tasks = append(tasks, batch.Task[model.CartItem, TaskResponse]{
+			Callback: func(cartItem model.CartItem) TaskResponse {
+				productName, productPrice, err := m.ProductChecker.GetProduct(ctx, cartItem.SKU)
+				if err != nil {
+					return TaskResponse{nil, err}
+				}
+				return TaskResponse{
+					&model.Item{
+						SKU:   cartItem.SKU,
+						Count: cartItem.Count,
+						Name:  productName,
+						Price: productPrice,
+					},
+					nil,
+				}
+			},
+			InArgs: cartItem,
 		})
 	}
 
-	return items, GetTotalPrice(items), nil
-}
+	batchingPool, results := batch.NewPool[model.CartItem, TaskResponse](ctx, amountWorkers)
 
-func GetTotalPrice(items []model.Item) uint32 {
+	var wg sync.WaitGroup
+	wg.Add(1)
 	var totalPrice uint32
 
-	for _, item := range items {
-		totalPrice += item.Price * uint32(item.Count)
-	}
+	go func() {
+		for res := range results {
+			if res.error != nil {
+				err = res.error
+			}
+			items = append(items, *res.Item)
+			totalPrice += res.Price * uint32(res.Count)
+		}
+	}()
 
-	return totalPrice
+	batchingPool.Submit(ctx, tasks)
+
+	<-ctx.Done()
+	batchingPool.Close()
+	wg.Wait()
+
+	return items, totalPrice, nil
 }
