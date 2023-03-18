@@ -76,10 +76,8 @@ func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Ite
 
 	// run tasks in worker pool
 	batchingPool.Submit(ctx, tasks)
-
-	<-ctx.Done()
-	batchingPool.Close()
 	wg.Wait()
+	batchingPool.Close()
 
 	if err != nil {
 		return nil, 0, err
