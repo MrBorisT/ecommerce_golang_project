@@ -13,9 +13,33 @@ type Service interface {
 	Stocks(ctx context.Context, SKU uint32) ([]model.Stock, error)
 }
 
-type service struct {
+type OrderRepository interface {
+	CancelOrder(ctx context.Context, orderID int64) error
+	CreateOrder(ctx context.Context, user int64, items []model.Item) (int64, error)
+	ListOrder(ctx context.Context, orderID int64) (string, int64, []model.Item, error)
+	OrderPayed(ctx context.Context, orderID int64) error
 }
 
-func NewService() *service {
-	return &service{}
+type StockRepository interface {
+	Stocks(ctx context.Context, SKU uint32) ([]model.Stock, error)
+	ReserveStocks(ctx context.Context, SKU uint32, count uint16) error
+	UnreserveStocks(ctx context.Context, SKU uint32, count uint16) error
+}
+
+type TransactionManager interface {
+	RunRepeatableRead(ctx context.Context, f func(ctxTX context.Context) error) error
+}
+
+type Deps struct {
+	OrderRepository
+	StockRepository
+	TransactionManager
+}
+
+type service struct {
+	Deps
+}
+
+func NewService(d Deps) *service {
+	return &service{d}
 }

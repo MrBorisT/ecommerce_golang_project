@@ -7,26 +7,27 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (m *Model) ListCart(ctx context.Context, user int64) ([]model.Item, uint32, error) {
-	//TODO use cart of user with id "user"
-	DUMMY_CART := []model.Item{
-		{
-			SKU:   773297411,
-			Count: 1,
-		},
+func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Item, uint32, error) {
+	cart, err := m.CartRepository.ListCart(ctx, user)
+	if err != nil {
+		return nil, 0, err
 	}
 
-	for i, cartItem := range DUMMY_CART {
-		productName, productPrice, err := m.productChecker.GetProduct(ctx, cartItem.SKU)
+	items := make([]model.Item, 0, len(cart.Items))
+	for _, cartItem := range cart.Items {
+		productName, productPrice, err := m.ProductChecker.GetProduct(ctx, cartItem.SKU)
 		if err != nil {
 			return nil, 0, errors.WithMessage(err, "checking product")
 		}
-		DUMMY_CART[i].Name = productName
-		DUMMY_CART[i].Price = productPrice
+		items = append(items, model.Item{
+			SKU:   cartItem.SKU,
+			Count: cartItem.Count,
+			Name:  productName,
+			Price: productPrice,
+		})
 	}
 
-	return DUMMY_CART, GetTotalPrice(DUMMY_CART), nil
-	//end of TODO
+	return items, GetTotalPrice(items), nil
 }
 
 func GetTotalPrice(items []model.Item) uint32 {

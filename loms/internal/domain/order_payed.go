@@ -5,5 +5,5 @@ import (
 )
 
 func (m *service) OrderPayed(ctx context.Context, orderID int64) error {
-	return nil
+	return m.OrderRepository.OrderPayed(ctx, orderID)
 }

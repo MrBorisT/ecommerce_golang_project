@@ -6,5 +6,5 @@ import (
 )
 
 func (m *service) Stocks(ctx context.Context, SKU uint32) ([]model.Stock, error) {
-	return nil, nil
+	return m.StockRepository.Stocks(ctx, SKU)
 }

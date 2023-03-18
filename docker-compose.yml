@@ -1,15 +1,66 @@
 version: "3.1"
+
+networks:
+  net:
+    driver: bridge
+
 services:
+  # database checkout
+  postgres-checkout:
+    image: postgres:15.1
+    environment:
+      POSTGRES_DB: checkout
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    container_name: 'postgres-container-checkout'
+    volumes:
+      - .:/var/lib/postgresql/data/checkout
+    ports:
+      - 5432:5432
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 4G
+    networks:
+      - net
+  # database loms
+  postgres-loms:
+    image: postgres:15.1
+    environment:
+      POSTGRES_DB: loms
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    container_name: 'postgres-container-loms'
+    volumes:
+      - .:/var/lib/postgresql/data/loms
+    ports:
+      - 5433:5432
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 4G
+    networks:
+      - net
   checkout:
     image: checkout
     build: ./checkout/
     ports:
       - "8080:8080"
+    networks:
+      - net
   loms:
     image: loms
     build: ./loms/
     ports:
       - "8081:8081"
+    networks:
+      - net
   # notification:
   #   image: notification
   #   build: ./notification

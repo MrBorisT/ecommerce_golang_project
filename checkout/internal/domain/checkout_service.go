@@ -24,14 +24,23 @@ type LOMS interface {
 	OrderCreator
 }
 
-type Model struct {
-	loms           LOMS
-	productChecker ProductChecker
+type CartRepository interface {
+	AddToCart(ctx context.Context, user int64, sku uint32, count uint16) error
+	DeleteFromCart(ctx context.Context, user int64, sku uint32, count uint16) error
+	ListCart(ctx context.Context, user int64) (*model.Cart, error)
+	Purchase(ctx context.Context, user int64) error
 }
 
-func New(loms LOMS, productChecker ProductChecker) *Model {
-	return &Model{
-		loms:           loms,
-		productChecker: productChecker,
-	}
+type Deps struct {
+	LOMS
+	ProductChecker
+	CartRepository
+}
+
+type CheckoutService struct {
+	Deps
+}
+
+func NewCheckoutService(d Deps) *CheckoutService {
+	return &CheckoutService{d}
 }
