@@ -46,7 +46,7 @@ func (r *cartRepo) DeleteFromCart(ctx context.Context, user int64, sku uint32, c
 	DELETE FROM cart_items
 	WHERE user_id = $1 AND sku = $2`
 
-		_, err := r.pool.Query(ctx, query, user, sku)
+		_, err := r.pool.Query(ctx, deleteQuery, user, sku)
 		return err
 	}
 
