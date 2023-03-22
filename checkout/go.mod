@@ -3,6 +3,7 @@ module route256/checkout
 go 1.19
 
 require (
+	github.com/Masterminds/squirrel v1.5.3
 	github.com/jackc/pgx/v4 v4.18.1
 	github.com/pkg/errors v0.9.1
 	go.uber.org/multierr v1.10.0

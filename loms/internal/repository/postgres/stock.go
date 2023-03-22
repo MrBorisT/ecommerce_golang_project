@@ -3,21 +3,21 @@ package repository
 import (
 	"context"
 	"route256/loms/internal/model"
-
-	"github.com/jackc/pgx/v4/pgxpool"
+	"route256/loms/internal/repository/postgres/transactor"
 )
 
 type StocksRepo struct {
-	pool *pgxpool.Pool
+	transactor.QueryEngineProvider
 }
 
-func NewStocksRepo(pool *pgxpool.Pool) *StocksRepo {
+func NewStocksRepo(provider transactor.QueryEngineProvider) *StocksRepo {
 	return &StocksRepo{
-		pool: pool,
+		QueryEngineProvider: provider,
 	}
 }
 
 func (r *StocksRepo) Stocks(ctx context.Context, SKU uint32) ([]model.Stock, error) {
+	db := r.QueryEngineProvider.GetQueryEngine(ctx)
 	const query = `
 	SELECT warehouse_id, count
 	FROM stocks
@@ -25,7 +25,7 @@ func (r *StocksRepo) Stocks(ctx context.Context, SKU uint32) ([]model.Stock, err
 
 	stocks := make([]model.Stock, 0)
 
-	rows, err := r.pool.Query(ctx, query, SKU)
+	rows, err := db.Query(ctx, query, SKU)
 	if err != nil {
 		return nil, err
 	}
@@ -42,12 +42,13 @@ func (r *StocksRepo) Stocks(ctx context.Context, SKU uint32) ([]model.Stock, err
 }
 
 func (r *StocksRepo) ReserveStocks(ctx context.Context, SKU uint32, count uint16) error {
+	db := r.QueryEngineProvider.GetQueryEngine(ctx)
 	const query = `
 	SELECT warehouse_id, count
 	FROM stocks
 	WHERE sku = $1 AND reserved = FALSE`
 
-	rows, err := r.pool.Query(ctx, query, SKU)
+	rows, err := db.Query(ctx, query, SKU)
 	if err != nil {
 		return err
 	}
@@ -67,7 +68,7 @@ func (r *StocksRepo) ReserveStocks(ctx context.Context, SKU uint32, count uint16
 		UPDATE stocks
 		SET reserved = TRUE
 		WHERE warehouse_id = $1 AND sku = $2 AND reserved = FALSE`
-				_, err := r.pool.Query(ctx, queryUpdate, stockWarehouseID, SKU)
+				_, err := db.Query(ctx, queryUpdate, stockWarehouseID, SKU)
 				if err != nil {
 					return err
 				}
@@ -78,7 +79,7 @@ func (r *StocksRepo) ReserveStocks(ctx context.Context, SKU uint32, count uint16
 		UPDATE stocks
 		SET reserved = TRUE, count = $1
 		WHERE warehouse_id = $2 AND sku = $3 AND reserved = FALSE`
-				_, err := r.pool.Query(ctx, queryUpdate, stockCount, stockWarehouseID, SKU)
+				_, err := db.Query(ctx, queryUpdate, stockCount, stockWarehouseID, SKU)
 				if err != nil {
 					return err
 				}
@@ -86,7 +87,7 @@ func (r *StocksRepo) ReserveStocks(ctx context.Context, SKU uint32, count uint16
 				const insertQuery = `
 		INSERT INTO stocks (warehouse_id, sku, count, reserved)
 		VALUES ($1, $2, $3, TRUE)`
-				_, err = r.pool.Query(ctx, insertQuery, stockWarehouseID, SKU, count)
+				_, err = db.Query(ctx, insertQuery, stockWarehouseID, SKU, count)
 				if err != nil {
 					return err
 				}
@@ -98,7 +99,7 @@ func (r *StocksRepo) ReserveStocks(ctx context.Context, SKU uint32, count uint16
 			UPDATE stocks
 			SET reserved = TRUE
 			WHERE warehouse_id = $1 AND sku = $2 AND reserved = FALSE`
-			_, err := r.pool.Query(ctx, queryUpdate, stockWarehouseID, SKU)
+			_, err := db.Query(ctx, queryUpdate, stockWarehouseID, SKU)
 			if err != nil {
 				return err
 			}
@@ -110,12 +111,13 @@ func (r *StocksRepo) ReserveStocks(ctx context.Context, SKU uint32, count uint16
 }
 
 func (r *StocksRepo) UnreserveStocks(ctx context.Context, SKU uint32, count uint16) error {
+	db := r.QueryEngineProvider.GetQueryEngine(ctx)
 	const query = `
 	SELECT warehouse_id, count
 	FROM stocks
 	WHERE sku = $1 AND reserved = TRUE`
 
-	rows, err := r.pool.Query(ctx, query, SKU)
+	rows, err := db.Query(ctx, query, SKU)
 	if err != nil {
 		return err
 	}
@@ -135,7 +137,7 @@ func (r *StocksRepo) UnreserveStocks(ctx context.Context, SKU uint32, count uint
 		UPDATE stocks
 		SET reserved = FALSE
 		WHERE warehouse_id = $1 AND sku = $2 AND reserved = TRUE`
-				_, err := r.pool.Query(ctx, queryUpdate, stockWarehouseID, SKU)
+				_, err := db.Query(ctx, queryUpdate, stockWarehouseID, SKU)
 				if err != nil {
 					return err
 				}
@@ -146,7 +148,7 @@ func (r *StocksRepo) UnreserveStocks(ctx context.Context, SKU uint32, count uint
 		UPDATE stocks
 		SET reserved = FALSE, count = $1
 		WHERE warehouse_id = $2 AND sku = $3 AND reserved = TRUE`
-				_, err := r.pool.Query(ctx, queryUpdate, stockCount, stockWarehouseID, SKU)
+				_, err := db.Query(ctx, queryUpdate, stockCount, stockWarehouseID, SKU)
 				if err != nil {
 					return err
 				}
@@ -154,7 +156,7 @@ func (r *StocksRepo) UnreserveStocks(ctx context.Context, SKU uint32, count uint
 				const insertQuery = `
 		INSERT INTO stocks (warehouse_id, sku, count, reserved)
 		VALUES ($1, $2, $3, FALSE)`
-				_, err = r.pool.Query(ctx, insertQuery, stockWarehouseID, SKU, count)
+				_, err = db.Query(ctx, insertQuery, stockWarehouseID, SKU, count)
 				if err != nil {
 					return err
 				}
@@ -166,7 +168,7 @@ func (r *StocksRepo) UnreserveStocks(ctx context.Context, SKU uint32, count uint
 			UPDATE stocks
 			SET reserved = TRUE
 			WHERE warehouse_id = $1 AND sku = $2 AND reserved = TRUE`
-			_, err := r.pool.Query(ctx, queryUpdate, stockWarehouseID, SKU)
+			_, err := db.Query(ctx, queryUpdate, stockWarehouseID, SKU)
 			if err != nil {
 				return err
 			}

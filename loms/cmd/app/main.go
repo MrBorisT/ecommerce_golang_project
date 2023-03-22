@@ -18,6 +18,7 @@ import (
 	"route256/loms/internal/handlers/orderpayed"
 	"route256/loms/internal/handlers/stockshandler"
 	repository "route256/loms/internal/repository/postgres"
+	"route256/loms/internal/repository/postgres/transactor"
 	desc "route256/loms/pkg/loms_v1"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -54,12 +55,14 @@ func initConfig() {
 }
 
 func setupHandlesAndGetService(pool *pgxpool.Pool) domain.Service {
-	stockRepo := repository.NewStocksRepo(pool)
-	orderRepo := repository.NewOrdersRepo(pool)
+	tm := transactor.NewTransactionManager(pool)
+	stockRepo := repository.NewStocksRepo(tm)
+	orderRepo := repository.NewOrdersRepo(tm)
 
 	businessLogic := domain.NewService(domain.Deps{
-		OrderRepository: orderRepo,
-		StockRepository: stockRepo,
+		OrderRepository:    orderRepo,
+		StockRepository:    stockRepo,
+		TransactionManager: tm,
 	})
 
 	createOrder := createorder.New(businessLogic)
