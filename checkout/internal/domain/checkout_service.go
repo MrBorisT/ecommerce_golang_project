@@ -1,5 +1,9 @@
 package domain
 
+//go:generate sh -c "mkdir -p mocks && rm -rf mocks/cart_repository_minimock.go && rm -rf mocks/product_checker_minimock.go"
+//go:generate minimock -i CartRepository -o ./mocks/ -s "_minimock.go"
+//go:generate minimock -i ProductChecker -o ./mocks/ -s "_minimock.go"
+
 import (
 	"context"
 	"route256/checkout/internal/model"
