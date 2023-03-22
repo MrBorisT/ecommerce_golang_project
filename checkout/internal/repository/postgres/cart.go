@@ -71,7 +71,7 @@ func (r *cartRepo) DeleteFromCart(ctx context.Context, user int64, sku uint32, c
 			return err
 		}
 
-		_, err := r.pool.Query(ctx, deleteQuery, user, sku)
+		_, err = r.pool.Query(ctx, deleteQueryRaw, deleteArgs...)
 		return err
 	}
 
