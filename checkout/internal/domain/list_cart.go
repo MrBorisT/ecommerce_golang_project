@@ -2,40 +2,102 @@ package domain
 
 import (
 	"context"
+	"route256/checkout/internal/config"
 	"route256/checkout/internal/model"
-
-	"github.com/pkg/errors"
+	"route256/libs/pool/batch"
+	"sync"
+	"sync/atomic"
 )
 
+const DEFAULT_AMOUNT_WORKERS = 5
+
+type ItemResponse struct {
+	item *model.Item
+	err  error
+}
+
+type ItemRequest struct {
+	ctx  context.Context
+	item model.CartItem
+}
+
 func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Item, uint32, error) {
+	// Getting cart of the user (by user's ID)
 	cart, err := m.CartRepository.ListCart(ctx, user)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	items := make([]model.Item, 0, len(cart.Items))
+
+	// Setting workers amount from config.yml
+	amountWorkers := config.ConfigData.MaxWorkers
+	// if set incorrectly - set to DEFAULT_AMOUNT_WORKERS workers
+	if amountWorkers <= 0 {
+		amountWorkers = DEFAULT_AMOUNT_WORKERS
+	}
+
+	// For task generics (in Task[] brackets):
+	// - ItemRequest: context and cart item (with sku and count info)
+	// - ItemResponse: full item info (sku, count, name and price) and an error
+	tasks := make([]batch.Task[ItemRequest, ItemResponse], 0, len(cart.Items))
+
+	// Creating every a task for every cart item
 	for _, cartItem := range cart.Items {
-		productName, productPrice, err := m.ProductChecker.GetProduct(ctx, cartItem.SKU)
-		if err != nil {
-			return nil, 0, errors.WithMessage(err, "checking product")
+		itemReq := ItemRequest{
+			ctx,
+			cartItem,
 		}
-		items = append(items, model.Item{
-			SKU:   cartItem.SKU,
-			Count: cartItem.Count,
-			Name:  productName,
-			Price: productPrice,
+		tasks = append(tasks, batch.Task[ItemRequest, ItemResponse]{
+			Callback: m.getItemInfo,
+			InArgs:   itemReq,
 		})
 	}
 
-	return items, GetTotalPrice(items), nil
-}
+	// creating worker pool
+	// and a result channel
+	batchingPool, results := batch.NewPool[ItemRequest, ItemResponse](ctx, amountWorkers)
 
-func GetTotalPrice(items []model.Item) uint32 {
+	var wg sync.WaitGroup
+	wg.Add(1)
 	var totalPrice uint32
 
-	for _, item := range items {
-		totalPrice += item.Price * uint32(item.Count)
-	}
+	go func() {
+		for res := range results {
+			if res.err != nil && err == nil {
+				err = res.err
+			}
+			items = append(items, *res.item)
 
-	return totalPrice
+			// for race safety
+			atomic.AddUint32(&totalPrice, res.item.Price*uint32(res.item.Count))
+		}
+	}()
+
+	// run tasks in worker pool
+	batchingPool.Submit(ctx, tasks)
+	wg.Wait()
+	batchingPool.Close()
+
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, totalPrice, nil
+}
+
+func (m *CheckoutService) getItemInfo(req ItemRequest) ItemResponse {
+	productName, productPrice, err := m.ProductChecker.GetProduct(req.ctx, req.item.SKU)
+	if err != nil {
+		req.ctx.Done()
+		return ItemResponse{nil, err}
+	}
+	return ItemResponse{
+		&model.Item{
+			SKU:   req.item.SKU,
+			Count: req.item.Count,
+			Name:  productName,
+			Price: productPrice,
+		},
+		nil,
+	}
 }

@@ -21,6 +21,7 @@ type ConfigStruct struct {
 		Password string `yaml:"password"`
 		Name     string `yaml:"dbname"`
 	}
+	MaxWorkers int `yaml:"max_workers"`
 }
 
 var ConfigData ConfigStruct

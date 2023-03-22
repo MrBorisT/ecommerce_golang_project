@@ -3,8 +3,6 @@ package products
 import (
 	"context"
 	productServiceAPI "route256/checkout/pkg/product"
-
-	"google.golang.org/grpc"
 )
 
 type Client interface {
@@ -12,14 +10,20 @@ type Client interface {
 	ListSkus(ctx context.Context, token string, start_after_sku, count uint32) ([]uint32, error)
 }
 
-type client struct {
-	productClient productServiceAPI.ProductServiceClient
-	token         string
+type RateLimiter interface {
+	Wait(ctx context.Context) error
 }
 
-func NewClient(cc *grpc.ClientConn, token string) *client {
-	return &client{
-		productClient: productServiceAPI.NewProductServiceClient(cc),
-		token:         token,
-	}
+type client struct {
+	Deps
+}
+
+type Deps struct {
+	ProductClient productServiceAPI.ProductServiceClient
+	Token         string
+	Limiter       RateLimiter
+}
+
+func NewClient(d Deps) *client {
+	return &client{d}
 }

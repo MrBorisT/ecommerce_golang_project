@@ -8,8 +8,11 @@ import (
 )
 
 func (c *client) ListSkus(ctx context.Context, start_after_sku, count uint32) ([]uint32, error) {
-	res, err := c.productClient.ListSkus(ctx, &productServiceAPI.ListSkusRequest{
-		Token:         c.token,
+	if err := c.Limiter.Wait(ctx); err != nil {
+		return nil, err
+	}
+	res, err := c.ProductClient.ListSkus(ctx, &productServiceAPI.ListSkusRequest{
+		Token:         c.Token,
 		StartAfterSku: start_after_sku,
 		Count:         count,
 	})

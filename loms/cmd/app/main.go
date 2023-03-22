@@ -6,6 +6,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"route256/libs/srvwrapper"
 	"route256/loms/internal/api/loms_v1"
 	"route256/loms/internal/config"
@@ -26,12 +28,17 @@ import (
 )
 
 func main() {
-	startApp()
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	startApp(ctx)
+
+	<-ctx.Done()
 }
 
-func startApp() {
+func startApp(ctx context.Context) {
 	initConfig()
-	pool := OpenDB()
+	pool := OpenDB(ctx)
 	defer pool.Close()
 	service := setupHandlesAndGetService(pool)
 	startServer()
@@ -73,9 +80,7 @@ func setupHandlesAndGetService(pool *pgxpool.Pool) domain.Service {
 	return businessLogic
 }
 
-func OpenDB() *pgxpool.Pool {
-	ctx := context.Background()
-
+func OpenDB(ctx context.Context) *pgxpool.Pool {
 	// connection string
 	psqlConn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		config.ConfigData.DB.Host,
