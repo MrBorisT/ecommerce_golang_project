@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
-	"route256/checkout/internal/model"
+	"route256/checkout/internal/repository/schema"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -78,7 +78,7 @@ func (r *cartRepo) DeleteFromCart(ctx context.Context, user int64, sku uint32, c
 	return nil
 }
 
-func (r *cartRepo) ListCart(ctx context.Context, user int64) (*model.Cart, error) {
+func (r *cartRepo) ListCart(ctx context.Context, user int64) ([]schema.CartItems, error) {
 	query := sq.Select("sku", "count").
 		From(itemsTable).
 		Where(sq.Eq{"user_id": user})
@@ -92,25 +92,25 @@ func (r *cartRepo) ListCart(ctx context.Context, user int64) (*model.Cart, error
 	if err != nil {
 		return nil, err
 	}
-	var cart *model.Cart
 
 	defer rows.Close()
 
-	cart.Items = make([]model.CartItem, 0)
+	items := make([]schema.CartItems, 0)
 
 	for rows.Next() {
-		item := model.CartItem{}
+		item := schema.CartItems{}
 		if err = rows.Scan(
 			&item.SKU,
 			&item.Count,
 		); err != nil {
 			return nil, err
 		}
+		item.UserID = user
 
-		cart.Items = append(cart.Items, item)
+		items = append(items, item)
 	}
 
-	return cart, nil
+	return items, nil
 }
 
 func (r *cartRepo) Purchase(ctx context.Context, user int64) error {

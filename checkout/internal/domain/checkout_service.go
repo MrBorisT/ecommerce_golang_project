@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"route256/checkout/internal/model"
+	"route256/checkout/internal/repository/schema"
 )
 
 // LOMS Service
@@ -24,10 +25,17 @@ type LOMS interface {
 	OrderCreator
 }
 
+type CheckoutService interface {
+	AddToCart(ctx context.Context, user int64, sku uint32, count uint16) error
+	DeleteFromCart(ctx context.Context, user int64, sku uint32, count uint16) error
+	ListCart(ctx context.Context, user int64) ([]model.Item, uint32, error)
+	Purchase(ctx context.Context, user int64) error
+}
+
 type CartRepository interface {
 	AddToCart(ctx context.Context, user int64, sku uint32, count uint16) error
 	DeleteFromCart(ctx context.Context, user int64, sku uint32, count uint16) error
-	ListCart(ctx context.Context, user int64) (*model.Cart, error)
+	ListCart(ctx context.Context, user int64) ([]schema.CartItems, error)
 	Purchase(ctx context.Context, user int64) error
 }
 
@@ -37,10 +45,10 @@ type Deps struct {
 	CartRepository
 }
 
-type CheckoutService struct {
+type service struct {
 	Deps
 }
 
-func NewCheckoutService(d Deps) *CheckoutService {
-	return &CheckoutService{d}
+func NewCheckoutService(d Deps) CheckoutService {
+	return &service{d}
 }

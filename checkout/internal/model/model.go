@@ -1,5 +1,7 @@
 package model
 
+import "route256/checkout/internal/repository/schema"
+
 type Item struct {
 	SKU   uint32 `json:"sku"`
 	Count uint16 `json:"count"`
@@ -28,6 +30,17 @@ type CartItem struct {
 }
 
 func BindCartItemToItem(cartItems []CartItem) []Item {
+	result := make([]Item, 0, len(cartItems))
+	for _, cartItem := range cartItems {
+		result = append(result, Item{
+			SKU:   cartItem.SKU,
+			Count: cartItem.Count,
+		})
+	}
+	return result
+}
+
+func BindSchemaCartItemToItem(cartItems []schema.CartItems) []Item {
 	result := make([]Item, 0, len(cartItems))
 	for _, cartItem := range cartItems {
 		result = append(result, Item{
