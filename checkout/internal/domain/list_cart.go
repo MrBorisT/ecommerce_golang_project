@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"fmt"
 	"route256/checkout/internal/config"
 	"route256/checkout/internal/model"
 	"route256/checkout/internal/repository/schema"
@@ -64,6 +65,7 @@ func (m *service) ListCart(ctx context.Context, user int64) ([]model.Item, uint3
 	var totalPrice uint32
 
 	go func() {
+		defer wg.Done()
 		for res := range results {
 			if res.err != nil && err == nil {
 				err = res.err
@@ -72,13 +74,14 @@ func (m *service) ListCart(ctx context.Context, user int64) ([]model.Item, uint3
 
 			// for race safety
 			atomic.AddUint32(&totalPrice, res.item.Price*uint32(res.item.Count))
+			fmt.Println("count", res.item.Count, "price", res.item.Price, "totalPrice", totalPrice)
 		}
 	}()
 
 	// run tasks in worker pool
-	batchingPool.Submit(ctx, tasks)
+	batchingPool.SubmitThenClose(ctx, tasks)
+
 	wg.Wait()
-	batchingPool.Close()
 
 	if err != nil {
 		return nil, 0, err

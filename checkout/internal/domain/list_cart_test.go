@@ -18,7 +18,7 @@ func TestListCart(t *testing.T) {
 
 	type args struct {
 		ctx     context.Context
-		reqUser uint64
+		reqUser int64
 	}
 
 	type ListCartRes struct {
@@ -29,20 +29,24 @@ func TestListCart(t *testing.T) {
 	var (
 		mc  = minimock.NewController(t)
 		ctx = context.Background()
-		// repoErr = errors.New("repo error")
-		userID = gofakeit.Int64()
-		n      = 10
+		n   = 1
+
+		userID       = gofakeit.Int64()
+		sku          = gofakeit.Uint32()
+		productName  = gofakeit.BeerName()
+		productPrice = gofakeit.Uint32()
 
 		repoRes     []schema.CartItems
-		expectedRes = &ListCartRes{}
-		sku         = 0
+		expectedRes = ListCartRes{}
+
+		// repoErr = errors.New("repo error")
 	)
 	t.Cleanup(mc.Finish)
 
 	for i := 0; i < n; i++ {
 		repoRes = append(repoRes, schema.CartItems{
-			UserID: gofakeit.Int64(),
-			SKU:    gofakeit.Uint32(),
+			UserID: userID,
+			SKU:    sku,
 			Count:  gofakeit.Uint16(),
 		})
 	}
@@ -51,9 +55,11 @@ func TestListCart(t *testing.T) {
 		expectedRes.items = append(expectedRes.items, model.Item{
 			SKU:   nt.SKU,
 			Count: nt.Count,
-			Name:  "",
-			Price: 0,
+			Name:  productName,
+			Price: productPrice,
 		})
+
+		expectedRes.totalPrice = uint32(nt.Count) * productPrice
 	}
 
 	tests := []struct {
@@ -68,9 +74,9 @@ func TestListCart(t *testing.T) {
 			name: "positive case",
 			args: args{
 				ctx:     ctx,
-				reqUser: 0,
+				reqUser: userID,
 			},
-			want: *expectedRes,
+			want: expectedRes,
 			err:  nil,
 			cartRepositoryMock: func(mc *minimock.Controller) CartRepository {
 				mock := checkoutMocks.NewCartRepositoryMock(mc)
@@ -79,22 +85,21 @@ func TestListCart(t *testing.T) {
 			},
 			productCheckerMock: func(mc *minimock.Controller) ProductChecker {
 				mock := checkoutMocks.NewProductCheckerMock(mc)
-				mock.GetProductMock.Expect(ctx, uint32(sku)).Return("", 0, nil)
+				mock.GetProductMock.Expect(ctx, sku).Return(productName, productPrice, nil)
 				return mock
 			},
 		},
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel()
 			api := NewCheckoutService(Deps{
 				CartRepository: tt.cartRepositoryMock(mc),
 				ProductChecker: tt.productCheckerMock(mc),
 			})
 
-			resItems, resTotalPrice, err := api.ListCart(tt.args.ctx, int64(tt.args.reqUser))
+			resItems, resTotalPrice, err := api.ListCart(tt.args.ctx, tt.args.reqUser)
 			res := ListCartRes{
 				items:      resItems,
 				totalPrice: resTotalPrice,

@@ -12,6 +12,7 @@ type Task[In, Out any] struct {
 
 type Pool[In, Out any] interface {
 	Submit(context.Context, []Task[In, Out])
+	SubmitThenClose(context.Context, []Task[In, Out])
 	Close()
 }
 
@@ -61,6 +62,26 @@ func (pool *p[In, Out]) Submit(ctx context.Context, tasks []Task[In, Out]) {
 			}
 		}
 	}()
+}
+
+// Submit then close pool
+func (pool *p[In, Out]) SubmitThenClose(ctx context.Context, tasks []Task[In, Out]) {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	// будет запущено pool.amountWorkers горутин
+	go func() {
+		defer wg.Done()
+		for _, task := range tasks {
+			select {
+			case <-ctx.Done():
+				return
+
+			case pool.taskSource <- task:
+			}
+		}
+	}()
+	wg.Wait()
+	pool.Close()
 }
 
 func (pool *p[In, Out]) bootstrap(ctx context.Context) {
