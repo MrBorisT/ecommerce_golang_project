@@ -2,7 +2,6 @@ package domain
 
 import (
 	"context"
-	"fmt"
 	"route256/checkout/internal/config"
 	"route256/checkout/internal/model"
 	"route256/checkout/internal/repository/schema"
@@ -69,12 +68,12 @@ func (m *service) ListCart(ctx context.Context, user int64) ([]model.Item, uint3
 		for res := range results {
 			if res.err != nil && err == nil {
 				err = res.err
+				continue
 			}
 			items = append(items, *res.item)
 
 			// for race safety
 			atomic.AddUint32(&totalPrice, res.item.Price*uint32(res.item.Count))
-			fmt.Println("count", res.item.Count, "price", res.item.Price, "totalPrice", totalPrice)
 		}
 	}()
 

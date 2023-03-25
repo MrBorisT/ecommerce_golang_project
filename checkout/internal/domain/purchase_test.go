@@ -9,6 +9,7 @@ import (
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/gojuno/minimock/v3"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,7 +25,7 @@ func TestPurchase(t *testing.T) {
 	var (
 		mc  = minimock.NewController(t)
 		ctx = context.Background()
-		n   = 1
+		n   = 100
 
 		userID = gofakeit.Int64()
 		sku    = gofakeit.Uint32()
@@ -32,7 +33,8 @@ func TestPurchase(t *testing.T) {
 		repoRes []schema.CartItems
 		lomsReq []model.Item
 
-		// repoErr = errors.New("repo error")
+		repoErr = errors.New("repo error")
+		lomsErr = errors.New("loms error")
 	)
 	t.Cleanup(mc.Finish)
 
@@ -69,6 +71,42 @@ func TestPurchase(t *testing.T) {
 				mock := checkoutMocks.NewLOMSMock(mc)
 				//returned order doesn't matter so loms returns 0
 				mock.CreateOrderMock.Expect(ctx, userID, lomsReq).Return(0, nil)
+				return mock
+			},
+		},
+		{
+			name: "repo error",
+			args: args{
+				ctx:     ctx,
+				reqUser: userID,
+			},
+			err: repoErr,
+			cartRepositoryMock: func(mc *minimock.Controller) CartRepository {
+				mock := checkoutMocks.NewCartRepositoryMock(mc)
+				mock.ListCartMock.Expect(ctx, userID).Return(nil, repoErr)
+				return mock
+			},
+			lomsMock: func(mc *minimock.Controller) LOMS {
+				mock := checkoutMocks.NewLOMSMock(mc)
+				//loms doesn't expect anything - just return loms mock
+				return mock
+			},
+		},
+		{
+			name: "loms error",
+			args: args{
+				ctx:     ctx,
+				reqUser: userID,
+			},
+			err: lomsErr,
+			cartRepositoryMock: func(mc *minimock.Controller) CartRepository {
+				mock := checkoutMocks.NewCartRepositoryMock(mc)
+				mock.ListCartMock.Expect(ctx, userID).Return(repoRes, nil)
+				return mock
+			},
+			lomsMock: func(mc *minimock.Controller) LOMS {
+				mock := checkoutMocks.NewLOMSMock(mc)
+				mock.CreateOrderMock.Expect(ctx, userID, lomsReq).Return(0, lomsErr)
 				return mock
 			},
 		},

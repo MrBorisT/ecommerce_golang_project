@@ -110,6 +110,4 @@ func worker[In, Out any](
 		case resultSink <- task.Callback(task.InArgs):
 		}
 	}
-
-	return
 }

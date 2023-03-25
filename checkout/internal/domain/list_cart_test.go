@@ -9,6 +9,7 @@ import (
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/gojuno/minimock/v3"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,17 +30,19 @@ func TestListCart(t *testing.T) {
 	var (
 		mc  = minimock.NewController(t)
 		ctx = context.Background()
-		n   = 1
+		n   = 100
 
 		userID       = gofakeit.Int64()
 		sku          = gofakeit.Uint32()
 		productName  = gofakeit.BeerName()
 		productPrice = gofakeit.Uint32()
 
-		repoRes     []schema.CartItems
-		expectedRes = ListCartRes{}
+		repoRes          []schema.CartItems
+		expectedRes      = ListCartRes{}
+		expectedEmptyRes = ListCartRes{}
 
-		// repoErr = errors.New("repo error")
+		repoErr        = errors.New("repo error")
+		prodServiceErr = errors.New("product checker error")
 	)
 	t.Cleanup(mc.Finish)
 
@@ -65,7 +68,7 @@ func TestListCart(t *testing.T) {
 	tests := []struct {
 		name               string
 		args               args
-		want               ListCartRes
+		want               *ListCartRes
 		err                error
 		cartRepositoryMock cartRepositoryMockFunc
 		productCheckerMock productCheckerMockFunc
@@ -76,7 +79,7 @@ func TestListCart(t *testing.T) {
 				ctx:     ctx,
 				reqUser: userID,
 			},
-			want: expectedRes,
+			want: &expectedRes,
 			err:  nil,
 			cartRepositoryMock: func(mc *minimock.Controller) CartRepository {
 				mock := checkoutMocks.NewCartRepositoryMock(mc)
@@ -86,6 +89,43 @@ func TestListCart(t *testing.T) {
 			productCheckerMock: func(mc *minimock.Controller) ProductChecker {
 				mock := checkoutMocks.NewProductCheckerMock(mc)
 				mock.GetProductMock.Expect(ctx, sku).Return(productName, productPrice, nil)
+				return mock
+			},
+		},
+		{
+			name: "repo error",
+			args: args{
+				ctx:     ctx,
+				reqUser: userID,
+			},
+			want: &expectedEmptyRes,
+			err:  repoErr,
+			cartRepositoryMock: func(mc *minimock.Controller) CartRepository {
+				mock := checkoutMocks.NewCartRepositoryMock(mc)
+				mock.ListCartMock.Expect(ctx, userID).Return(nil, repoErr)
+				return mock
+			},
+			productCheckerMock: func(mc *minimock.Controller) ProductChecker {
+				mock := checkoutMocks.NewProductCheckerMock(mc)
+				return mock
+			},
+		},
+		{
+			name: "product checker error",
+			args: args{
+				ctx:     ctx,
+				reqUser: userID,
+			},
+			want: &expectedEmptyRes,
+			err:  prodServiceErr,
+			cartRepositoryMock: func(mc *minimock.Controller) CartRepository {
+				mock := checkoutMocks.NewCartRepositoryMock(mc)
+				mock.ListCartMock.Expect(ctx, userID).Return(repoRes, nil)
+				return mock
+			},
+			productCheckerMock: func(mc *minimock.Controller) ProductChecker {
+				mock := checkoutMocks.NewProductCheckerMock(mc)
+				mock.GetProductMock.Expect(ctx, sku).Return(productName, productPrice, prodServiceErr)
 				return mock
 			},
 		},
@@ -100,7 +140,7 @@ func TestListCart(t *testing.T) {
 			})
 
 			resItems, resTotalPrice, err := api.ListCart(tt.args.ctx, tt.args.reqUser)
-			res := ListCartRes{
+			res := &ListCartRes{
 				items:      resItems,
 				totalPrice: resTotalPrice,
 			}
