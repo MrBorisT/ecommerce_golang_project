@@ -81,10 +81,6 @@ func (r *OrdersRepo) CreateOrder(ctx context.Context, user int64, items []model.
 
 func (r *OrdersRepo) ListOrder(ctx context.Context, orderID int64) (string, int64, []model.Item, error) {
 	db := r.QueryEngineProvider.GetQueryEngine(ctx)
-	// const query = `
-	// SELECT status, user_id
-	// FROM order
-	// WHERE id = $1`
 
 	query := sq.Select("status", "user_id").
 		From(ordersTable).
