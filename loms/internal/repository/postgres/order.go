@@ -166,3 +166,20 @@ func (r *OrdersRepo) OrderFailed(ctx context.Context, orderID int64) error {
 
 	return err
 }
+
+func (r *OrdersRepo) OrderAwaitPayment(ctx context.Context, orderID int64) error {
+	db := r.QueryEngineProvider.GetQueryEngine(ctx)
+	query :=
+		sq.Update(ordersTable).
+			Set("status", "awaiting payment").
+			Where(sq.Eq{"id": orderID})
+
+	queryRaw, args, err := query.ToSql()
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Query(ctx, queryRaw, args...)
+
+	return err
+}
