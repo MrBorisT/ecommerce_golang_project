@@ -17,13 +17,13 @@ var (
 const DEFAULT_CANCEL_ORDER_TIME = 10 * time.Minute
 
 func (m *service) CreateOrder(ctx context.Context, user int64, items []model.Item) (int64, error) {
-	var orderID int64
-	err := m.TransactionManager.RunRepeatableRead(ctx, func(ctxTX context.Context) error {
+	orderID, err := m.OrderRepository.CreateOrder(ctx, user, items)
+	if err != nil {
+		return 0, errors.WithMessage(err, ErrCreatingOrder.Error())
+	}
+
+	err = m.TransactionManager.RunRepeatableRead(ctx, func(ctxTX context.Context) error {
 		var err error
-		orderID, err = m.OrderRepository.CreateOrder(ctxTX, user, items)
-		if err != nil {
-			return errors.WithMessage(err, ErrCreatingOrder.Error())
-		}
 
 		for _, item := range items {
 			if err = m.StockRepository.ReserveStocks(ctxTX, item.SKU, item.Count); err != nil {
