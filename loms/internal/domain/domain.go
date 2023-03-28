@@ -18,6 +18,7 @@ type OrderRepository interface {
 	CreateOrder(ctx context.Context, user int64, items []model.Item) (int64, error)
 	ListOrder(ctx context.Context, orderID int64) (string, int64, []model.Item, error)
 	OrderPayed(ctx context.Context, orderID int64) error
+	OrderFailed(ctx context.Context, orderID int64) error
 }
 
 type StockRepository interface {

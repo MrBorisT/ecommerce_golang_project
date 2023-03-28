@@ -22,9 +22,9 @@ const ordersTable = "orders"
 
 func (r *OrdersRepo) CancelOrder(ctx context.Context, orderID int64) error {
 	db := r.QueryEngineProvider.GetQueryEngine(ctx)
-	query :=
-		sq.Delete(ordersTable).
-			Where(sq.Eq{"orders": orderID})
+	query := sq.Update(ordersTable).
+		Set("status", "cancelled").
+		Where(sq.Eq{"id": orderID})
 
 	queryRaw, args, err := query.ToSql()
 	if err != nil {
@@ -78,14 +78,24 @@ func (r *OrdersRepo) CreateOrder(ctx context.Context, user int64, items []model.
 
 	return orderID, nil
 }
+
 func (r *OrdersRepo) ListOrder(ctx context.Context, orderID int64) (string, int64, []model.Item, error) {
 	db := r.QueryEngineProvider.GetQueryEngine(ctx)
-	const query = `
-	SELECT status, user_id
-	FROM order
-	WHERE id = $1`
+	// const query = `
+	// SELECT status, user_id
+	// FROM order
+	// WHERE id = $1`
 
-	row, err := db.Query(ctx, query, orderID)
+	query := sq.Select("status", "user_id").
+		From(ordersTable).
+		Where(sq.Eq{"id": orderID})
+
+	queryRaw, args, err := query.ToSql()
+	if err != nil {
+		return "", 0, nil, err
+	}
+
+	row, err := db.Query(ctx, queryRaw, args...)
 	if err != nil {
 		return "", 0, nil, err
 	}
@@ -97,12 +107,16 @@ func (r *OrdersRepo) ListOrder(ctx context.Context, orderID int64) (string, int6
 		return "", 0, nil, err
 	}
 
-	const queryItems = `
-	SELECT sku, count
-	FROM order_items
-	WHERE order_id = $1`
+	query = sq.Select("sku", "count").
+		From(ordersTable).
+		Where(sq.Eq{"order_id": orderID})
 
-	rowsItems, err := db.Query(ctx, queryItems, orderID)
+	queryRaw, args, err = query.ToSql()
+	if err != nil {
+		return "", 0, nil, err
+	}
+
+	rowsItems, err := db.Query(ctx, queryRaw, args...)
 
 	if err != nil {
 		return status, userID, nil, err
@@ -128,6 +142,23 @@ func (r *OrdersRepo) OrderPayed(ctx context.Context, orderID int64) error {
 	query :=
 		sq.Update(ordersTable).
 			Set("status", "payed").
+			Where(sq.Eq{"id": orderID})
+
+	queryRaw, args, err := query.ToSql()
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Query(ctx, queryRaw, args...)
+
+	return err
+}
+
+func (r *OrdersRepo) OrderFailed(ctx context.Context, orderID int64) error {
+	db := r.QueryEngineProvider.GetQueryEngine(ctx)
+	query :=
+		sq.Update(ordersTable).
+			Set("status", "failed").
 			Where(sq.Eq{"id": orderID})
 
 	queryRaw, args, err := query.ToSql()
