@@ -12,6 +12,8 @@ precommit:
 	cd loms && make precommit
 	cd notifications && make precommit
 
+down:
+	docker-compose down
 
 # db stuff
 up-db:
@@ -26,6 +28,6 @@ start-db:
 	docker-compose start postgres-checkout
 	docker-compose start postgres-loms
 
-down-db:
-	docker-compose down postgres-checkout
-	docker-compose down postgres-loms
+#	kafka
+up-all-kafka:
+	docker-compose up -d zookeeper kafka1 kafka2 kafka3

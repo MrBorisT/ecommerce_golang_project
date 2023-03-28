@@ -19,6 +19,7 @@ import (
 	"route256/loms/internal/handlers/stockshandler"
 	repository "route256/loms/internal/repository/postgres"
 	"route256/loms/internal/repository/postgres/transactor"
+	"route256/loms/internal/sender"
 	desc "route256/loms/pkg/loms_v1"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -63,6 +64,7 @@ func setupHandlesAndGetService(pool *pgxpool.Pool) domain.Service {
 		OrderRepository:    orderRepo,
 		StockRepository:    stockRepo,
 		TransactionManager: tm,
+		StatusSender:       sender.NewStatusSender(),
 	})
 
 	createOrder := createorder.New(businessLogic)

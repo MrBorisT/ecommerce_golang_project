@@ -30,10 +30,15 @@ type TransactionManager interface {
 	RunRepeatableRead(ctx context.Context, f func(ctxTX context.Context) error) error
 }
 
+type StatusSender interface {
+	SendStatusChange(orderID int64, status string)
+}
+
 type Deps struct {
 	OrderRepository
 	StockRepository
 	TransactionManager
+	StatusSender
 }
 
 type service struct {

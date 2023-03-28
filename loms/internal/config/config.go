@@ -17,6 +17,7 @@ type ConfigStruct struct {
 		Password string `yaml:"password"`
 		Name     string `yaml:"dbname"`
 	}
+	Brokers []string `yaml:"brokers"`
 }
 
 var ConfigData ConfigStruct
