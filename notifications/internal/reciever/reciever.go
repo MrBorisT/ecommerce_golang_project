@@ -9,19 +9,19 @@ import (
 
 type HandleFunc func(id string)
 
-type Reciver struct {
+type Reciever struct {
 	consumer sarama.Consumer
 	handlers map[string]HandleFunc
 }
 
-func NewReciever(consumer sarama.Consumer, handlers map[string]HandleFunc) *Reciver {
-	return &Reciver{
+func NewReciever(consumer sarama.Consumer, handlers map[string]HandleFunc) *Reciever {
+	return &Reciever{
 		consumer: consumer,
 		handlers: handlers,
 	}
 }
 
-func (r *Reciver) Subscribe(topic string) error {
+func (r *Reciever) Subscribe(topic string) error {
 	handler, ok := r.handlers[topic]
 	if !ok {
 		return errors.New("no handler for topic")
