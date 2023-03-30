@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"route256/libs/kafka"
 	"route256/libs/srvwrapper"
 	"route256/loms/internal/api/loms_v1"
 	"route256/loms/internal/config"
@@ -60,11 +61,23 @@ func setupHandlesAndGetService(pool *pgxpool.Pool) domain.Service {
 	stockRepo := repository.NewStocksRepo(tm)
 	orderRepo := repository.NewOrdersRepo(tm)
 
+	producer, err := kafka.NewAsyncProducer(config.ConfigData.Brokers)
+	if err != nil {
+		log.Fatalln("creating producer: ", err)
+	}
+
+	onSuccess := func(id string) {
+		fmt.Println("order success", id)
+	}
+	onFailed := func(id string) {
+		fmt.Println("order failed", id)
+	}
+
 	businessLogic := domain.NewService(domain.Deps{
 		OrderRepository:    orderRepo,
 		StockRepository:    stockRepo,
 		TransactionManager: tm,
-		StatusSender:       sender.NewStatusSender(),
+		StatusSender:       sender.NewStatusSender(producer, "statuses", onSuccess, onFailed),
 	})
 
 	createOrder := createorder.New(businessLogic)

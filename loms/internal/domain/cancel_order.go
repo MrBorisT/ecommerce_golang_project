@@ -2,11 +2,19 @@ package domain
 
 import (
 	"context"
-	"log"
+
+	"github.com/pkg/errors"
 )
 
 func (m *service) CancelOrder(ctx context.Context, orderID int64) error {
-	err := m.TransactionManager.RunRepeatableRead(ctx, func(ctxTX context.Context) error {
+	err := m.OrderRepository.CancelOrder(ctx, orderID)
+	if err != nil {
+		return err
+	}
+
+	m.StatusSender.SendStatusChange(orderID, "cancelled")
+
+	errTX := m.TransactionManager.RunRepeatableRead(ctx, func(ctxTX context.Context) error {
 		_, _, items, err := m.OrderRepository.ListOrder(ctxTX, orderID)
 		if err != nil {
 			return err
@@ -16,12 +24,10 @@ func (m *service) CancelOrder(ctx context.Context, orderID int64) error {
 				return err
 			}
 		}
-		return m.OrderRepository.CancelOrder(ctxTX, orderID)
+		return nil
 	})
-
-	if err != nil {
-		log.Println("Order cancel failed", err)
-		return err
+	if errTX != nil {
+		return errors.WithMessage(errTX, "unreserving stocks")
 	}
 
 	return nil

@@ -21,6 +21,7 @@ func (m *service) CreateOrder(ctx context.Context, user int64, items []model.Ite
 	if err != nil {
 		return 0, errors.WithMessage(err, ErrCreatingOrder.Error())
 	}
+	m.StatusSender.SendStatusChange(orderID, "new")
 
 	err = m.TransactionManager.RunRepeatableRead(ctx, func(ctxTX context.Context) error {
 		var err error
@@ -39,11 +40,12 @@ func (m *service) CreateOrder(ctx context.Context, user int64, items []model.Ite
 			m.OrderRepository.OrderFailed(ctx, orderID)
 		}
 		log.Println("Create order failed", err)
+		m.StatusSender.SendStatusChange(orderID, "failed")
 		return 0, err
 	}
 
+	m.StatusSender.SendStatusChange(orderID, "awaiting payment")
 	go m.CancelOrderByTimer(ctx, orderID)
-
 	return orderID, nil
 }
 
