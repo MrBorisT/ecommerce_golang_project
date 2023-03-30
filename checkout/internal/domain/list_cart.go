@@ -66,7 +66,10 @@ func (m *service) ListCart(ctx context.Context, user int64) ([]model.Item, uint3
 	go func() {
 		defer wg.Done()
 		for res := range results {
-			if res.err != nil && err == nil {
+			if err != nil {
+				continue
+			}
+			if res.err != nil {
 				err = res.err
 				continue
 			}
