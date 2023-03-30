@@ -77,7 +77,7 @@ func setupHandlesAndGetService(pool *pgxpool.Pool) domain.Service {
 		OrderRepository:    orderRepo,
 		StockRepository:    stockRepo,
 		TransactionManager: tm,
-		StatusSender:       sender.NewStatusSender(producer, "statuses", onSuccess, onFailed),
+		StatusSender:       sender.NewStatusSender(producer, config.ConfigData.Topic, onSuccess, onFailed),
 	})
 
 	createOrder := createorder.New(businessLogic)
