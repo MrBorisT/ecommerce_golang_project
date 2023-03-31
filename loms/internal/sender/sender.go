@@ -16,7 +16,6 @@ type sender struct {
 }
 
 type OrderStatus struct {
-	ID     int64  `json:"id"`
 	Status string `json:"status"`
 }
 
@@ -52,7 +51,6 @@ func NewStatusSender(producer sarama.AsyncProducer, topic string, onSuccess, onF
 
 func (s *sender) SendStatusChange(orderID int64, status string) {
 	bytes, err := json.Marshal(OrderStatus{
-		ID:     orderID,
 		Status: status,
 	})
 	if err != nil {

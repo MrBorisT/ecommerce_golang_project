@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"route256/libs/kafka"
 	"route256/libs/srvwrapper"
+	"route256/libs/transactor"
 	"route256/loms/internal/api/loms_v1"
 	"route256/loms/internal/config"
 	"route256/loms/internal/domain"
@@ -19,7 +20,6 @@ import (
 	"route256/loms/internal/handlers/orderpayed"
 	"route256/loms/internal/handlers/stockshandler"
 	repository "route256/loms/internal/repository/postgres"
-	"route256/loms/internal/repository/postgres/transactor"
 	"route256/loms/internal/sender"
 	desc "route256/loms/pkg/loms_v1"
 

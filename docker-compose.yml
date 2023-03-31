@@ -114,6 +114,27 @@ services:
           memory: 4G
     networks:
       - net
+  # database notifications
+  postgres-notifications:
+    image: postgres:15.1
+    environment:
+      POSTGRES_DB: notifications
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    container_name: 'postgres-container-notifications'
+    volumes:
+      - .:/var/lib/postgresql/data/notifications
+    ports:
+      - 5434:5432
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 4G
+    networks:
+      - net
   checkout:
     image: checkout
     build: ./checkout/

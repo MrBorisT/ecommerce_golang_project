@@ -2,8 +2,8 @@ package repository
 
 import (
 	"context"
+	"route256/libs/transactor"
 	"route256/loms/internal/model"
-	"route256/loms/internal/repository/postgres/transactor"
 
 	sq "github.com/Masterminds/squirrel"
 )

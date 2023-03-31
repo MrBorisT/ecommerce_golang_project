@@ -29,5 +29,5 @@ start-db:
 	docker-compose start postgres-loms
 
 #	kafka
-up-all-kafka:
+up-kafka:
 	docker-compose up -d zookeeper kafka1 kafka2 kafka3
