@@ -8,6 +8,13 @@ import (
 )
 
 type ConfigStruct struct {
+	DB struct {
+		Host     string `yaml:"host"`
+		Port     int    `yaml:"port"`
+		User     string `yaml:"user"`
+		Password string `yaml:"password"`
+		Name     string `yaml:"dbname"`
+	}
 	Brokers []string `yaml:"brokers"`
 	Topic   string   `yaml:"topic"`
 }

@@ -1,60 +1,69 @@
 package reciever
 
 import (
-	"errors"
+	"context"
 	"log"
 
 	"github.com/Shopify/sarama"
+	"github.com/pkg/errors"
 )
 
-type HandleFunc func(id string)
+type HandleFunc func(id string, value []byte)
+
+type OffsetRepository interface {
+	CreateRepo(ctx context.Context, partitionID int32) error
+	GetOffsetForRepo(ctx context.Context, partitionID int32) (int64, error)
+	UpdateOffset(ctx context.Context, partitionID int32, newOffset int64) error
+	GetOffsets(ctx context.Context) (map[int32]int64, error)
+}
 
 type Reciever struct {
-	consumer sarama.Consumer
-	handlers map[string]HandleFunc
+	consumer   sarama.Consumer
+	offsetRepo OffsetRepository
+	handlers   map[string]HandleFunc
 }
 
-func NewReciever(consumer sarama.Consumer, handlers map[string]HandleFunc) *Reciever {
+func NewReciever(consumer sarama.Consumer, offsetRepo OffsetRepository, handlers map[string]HandleFunc) *Reciever {
 	return &Reciever{
-		consumer: consumer,
-		handlers: handlers,
+		consumer:   consumer,
+		handlers:   handlers,
+		offsetRepo: offsetRepo,
 	}
 }
 
-func (r *Reciever) Subscribe(topic string) error {
-	handler, ok := r.handlers[topic]
-	if !ok {
-		return errors.New("no handler for topic")
-	}
+func (r *Reciever) Subscribe(ctx context.Context, topic string) error {
+	handler := r.handlers[topic]
 
-	partitionList, err := r.consumer.Partitions(topic) //get all partitions on the given topic
+	partitionList, err := r.consumer.Partitions(topic)
 	if err != nil {
 		return err
 	}
-	offsets := map[int32]int64{
-		0: 3,
-		1: 8,
-		2: 2,
+
+	offsets, err := r.offsetRepo.GetOffsets(ctx)
+	if err != nil {
+		return errors.WithMessage(err, "getting initial offsets")
 	}
 
 	for _, partition := range partitionList {
-		// initialOffset := sarama.OffsetNewest // есть риск потерять сообщения
-		// initialOffset := sarama.OffsetOldest // перечитываете одни и теже сообщения
-		initialOffset := offsets[partition] // Получаем оффсет последний из внешнего storage(хранилища/БД/кеша)
+		initialOffset, ok := offsets[partition]
+		if !ok {
+			r.offsetRepo.CreateRepo(ctx, partition)
+		}
 
 		pc, err := r.consumer.ConsumePartition(topic, partition, initialOffset)
 		if err != nil {
 			return err
 		}
 
-		go func(pc sarama.PartitionConsumer) {
+		go func(pc sarama.PartitionConsumer, partition int32) {
 			for message := range pc.Messages() {
 				k := string(message.Key)
-				handler(k)
-				log.Printf("read: key: %s, topic: %s, partion: %d, offset: %d",
-					k, topic, message.Partition, message.Offset)
+				handler(k, message.Value)
+				if err := r.offsetRepo.UpdateOffset(ctx, partition, message.Offset); err != nil {
+					log.Println("error updating #", partition, " partition, offset #", message.Offset, ": ", err)
+				}
 			}
-		}(pc)
+		}(pc, partition)
 	}
 
 	return nil
