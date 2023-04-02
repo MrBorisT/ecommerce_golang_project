@@ -2,7 +2,6 @@ package createorder
 
 import (
 	"context"
-	"log"
 	"route256/loms/internal/domain"
 	"route256/loms/internal/model"
 
@@ -45,8 +44,6 @@ func New(businessLogic domain.Service) *Handler {
 }
 
 func (h *Handler) Handle(ctx context.Context, request Request) (Response, error) {
-	log.Printf("create order: %+v", request)
-
 	var response Response
 	orderID, err := h.businessLogic.CreateOrder(ctx, request.User, request.Items)
 	if err != nil {

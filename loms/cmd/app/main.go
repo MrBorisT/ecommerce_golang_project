@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"route256/libs/kafka"
+	"route256/libs/logger"
 	"route256/libs/srvwrapper"
 	"route256/libs/transactor"
 	"route256/loms/internal/api/loms_v1"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -32,6 +34,11 @@ import (
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
+
+	develMode := flag.Bool("devel", false, "developer mode")
+	flag.Parse()
+
+	initLogger(*develMode)
 
 	startApp(ctx)
 
@@ -49,10 +56,8 @@ func startApp(ctx context.Context) {
 
 func initConfig() {
 	//!!!write port numbers with colon ":"
-	log.Println("initializing config")
-
 	if err := config.Init(); err != nil {
-		log.Fatalln("config init: ", err)
+		logger.Fatal("config init", zap.Error(err))
 	}
 }
 
@@ -63,7 +68,7 @@ func setupHandlesAndGetService(pool *pgxpool.Pool) domain.Service {
 
 	producer, err := kafka.NewAsyncProducer(config.ConfigData.Brokers)
 	if err != nil {
-		log.Fatalln("creating producer: ", err)
+		logger.Fatal("creating producer", zap.Error(err))
 	}
 
 	onSuccess := func(id string) {
@@ -81,16 +86,25 @@ func setupHandlesAndGetService(pool *pgxpool.Pool) domain.Service {
 	})
 
 	createOrder := createorder.New(businessLogic)
-	listOrder := listorder.New(businessLogic)
-	orderPayed := orderpayed.New(businessLogic)
-	cancelOrder := cancelorder.New(businessLogic)
-	stocksHandler := stockshandler.New(businessLogic)
+	createOrderHandler := srvwrapper.New(createOrder.Handle)
 
-	http.Handle("/createOrder", srvwrapper.New(createOrder.Handle))
-	http.Handle("/listOrder", srvwrapper.New(listOrder.Handle))
-	http.Handle("/orderPayed", srvwrapper.New(orderPayed.Handle))
-	http.Handle("/cancelOrder", srvwrapper.New(cancelOrder.Handle))
-	http.Handle("/stocks", srvwrapper.New(stocksHandler.Handle))
+	listOrder := listorder.New(businessLogic)
+	listOrderHandler := srvwrapper.New(listOrder.Handle)
+
+	orderPayed := orderpayed.New(businessLogic)
+	orderPayedHandler := srvwrapper.New(orderPayed.Handle)
+
+	cancelOrder := cancelorder.New(businessLogic)
+	cancelOrderHandler := srvwrapper.New(cancelOrder.Handle)
+
+	stocks := stockshandler.New(businessLogic)
+	stocksHandler := srvwrapper.New(stocks.Handle)
+
+	http.Handle("/createOrder", logger.Middleware(createOrderHandler))
+	http.Handle("/listOrder", logger.Middleware(listOrderHandler))
+	http.Handle("/orderPayed", logger.Middleware(orderPayedHandler))
+	http.Handle("/cancelOrder", logger.Middleware(cancelOrderHandler))
+	http.Handle("/stocks", logger.Middleware(stocksHandler))
 
 	return businessLogic
 }
@@ -107,11 +121,11 @@ func OpenDB(ctx context.Context) *pgxpool.Pool {
 
 	pool, err := pgxpool.Connect(ctx, psqlConn)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("db connect", zap.Error(err))
 	}
 
 	if err := pool.Ping(ctx); err != nil {
-		log.Fatal(err)
+		logger.Fatal("db ping", zap.Error(err))
 	}
 
 	return pool
@@ -120,10 +134,10 @@ func OpenDB(ctx context.Context) *pgxpool.Pool {
 func startServer() {
 	port := config.ConfigData.Port
 
-	log.Println("listening http at: ", port)
+	logger.Info("server start", zap.String("port", port))
 
 	if err := http.ListenAndServe(port, nil); err != nil {
-		log.Fatalln("cannot listen http: ", err)
+		logger.Fatal("server error", zap.Error(err))
 	}
 }
 
@@ -133,7 +147,7 @@ func startGRPCServer(businessLogic domain.Service) {
 	err = errors.WithMessage(err, "grpc server")
 
 	if err != nil {
-		log.Fatalln("failed to listen: ", err)
+		logger.Fatal("grpc server listen", zap.Error(err))
 	}
 
 	s := grpc.NewServer()
@@ -141,9 +155,13 @@ func startGRPCServer(businessLogic domain.Service) {
 	reflection.Register(s)
 	desc.RegisterLomsServiceServer(s, loms_v1.NewLomsV1(businessLogic))
 
-	log.Printf("listening at %v\n", lis.Addr())
+	logger.Info("grpc server started", zap.Any("address", lis.Addr()))
 
 	if err = s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v\n", err)
+		logger.Fatal("grpc server error", zap.Error(err))
 	}
+}
+
+func initLogger(develMode bool) {
+	logger.Init(develMode)
 }

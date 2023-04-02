@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"route256/checkout/internal/clients/grpc/loms"
 	productsClient "route256/checkout/internal/clients/grpc/products"
@@ -15,11 +15,13 @@ import (
 	"route256/checkout/internal/handlers/purchase"
 	repository "route256/checkout/internal/repository/postgres"
 	productServiceAPI "route256/checkout/pkg/product"
+	"route256/libs/logger"
 	"route256/libs/srvwrapper"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -28,11 +30,18 @@ import (
 const DEFAULT_RPS = 10
 
 func main() {
+	develMode := flag.Bool("devel", false, "developer mode")
+	flag.Parse()
+
+	initLogger(*develMode)
 	initConfig()
+
 	lomsConn, productConn := ConnectToGRPCServices()
 	defer CloseConnections(lomsConn, productConn)
+
 	pool := OpenDB()
 	defer pool.Close()
+
 	setupHandles(lomsConn, productConn, pool)
 	startServer()
 }
@@ -40,7 +49,7 @@ func main() {
 func initConfig() {
 	err := config.Init()
 	if err != nil {
-		log.Fatalln("config init: ", err)
+		logger.Fatal("config init", zap.Error(err))
 	}
 }
 
@@ -58,11 +67,11 @@ func OpenDB() *pgxpool.Pool {
 
 	pool, err := pgxpool.Connect(ctx, psqlConn)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("db connect", zap.Error(err))
 	}
 
 	if err := pool.Ping(ctx); err != nil {
-		log.Fatal(err)
+		logger.Fatal("db ping", zap.Error(err))
 	}
 
 	return pool
@@ -91,19 +100,19 @@ func setupHandles(lomsConn, productConn *grpc.ClientConn, pool *pgxpool.Pool) {
 	listCart := listcart.New(businessLogic)
 	purchase := purchase.New(businessLogic)
 
-	http.Handle("/addToCart", srvwrapper.New(addToCartHandler.Handle))
-	http.Handle("/deleteFromCart", srvwrapper.New(deleteFromCart.Handle))
-	http.Handle("/listCart", srvwrapper.New(listCart.Handle))
-	http.Handle("/purchase", srvwrapper.New(purchase.Handle))
+	http.Handle("/addToCart", logger.Middleware(srvwrapper.New(addToCartHandler.Handle)))
+	http.Handle("/deleteFromCart", logger.Middleware(srvwrapper.New(deleteFromCart.Handle)))
+	http.Handle("/listCart", logger.Middleware(srvwrapper.New(listCart.Handle)))
+	http.Handle("/purchase", logger.Middleware(srvwrapper.New(purchase.Handle)))
 }
 
 func startServer() {
 	port := config.ConfigData.Port
 
-	log.Println("listening http at: ", port)
+	logger.Info("start server", zap.String("port", port))
 
 	if err := http.ListenAndServe(port, nil); err != nil {
-		log.Fatalln("cannot listen http: ", err)
+		logger.Fatal("server error", zap.Error(err))
 	}
 }
 
@@ -126,14 +135,18 @@ func ConnectToGRPCServices() (*grpc.ClientConn, *grpc.ClientConn) {
 	//LOMS connection
 	lomsConn, err := GetClientConn(config.ConfigData.Services.Loms)
 	if err != nil {
-		log.Fatalf("cannot connect to loms service: %v\n", err.Error())
+		logger.Fatal("loms connect", zap.Error(err))
 	}
 
 	//Product connection
 	productConn, err := GetClientConn(config.ConfigData.Services.ProductService)
 	if err != nil {
-		log.Fatalf("cannot connect to product service: %v\n", err.Error())
+		logger.Fatal("product service", zap.Error(err))
 	}
 
 	return lomsConn, productConn
+}
+
+func initLogger(develMode bool) {
+	logger.Init(develMode)
 }

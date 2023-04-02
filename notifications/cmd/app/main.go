@@ -2,21 +2,29 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
-	"log"
 	"route256/libs/kafka"
+	"route256/libs/logger"
 	"route256/notifications/config"
 	"route256/notifications/internal/reciever"
 	"route256/notifications/internal/repository"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+	"go.uber.org/zap"
 )
 
 func main() {
 	ctx := context.Background()
+
+	develMode := flag.Bool("devel", false, "developer mode")
+	flag.Parse()
+
+	initLogger(*develMode)
+
 	c, err := kafka.NewConsumer(config.ConfigData.Brokers)
 	if err != nil {
-		log.Fatalln(err)
+		logger.Fatal("creating consumer", zap.Error(err))
 	}
 
 	topic := config.ConfigData.Topic
@@ -46,16 +54,20 @@ func OpenDB(ctx context.Context) *pgxpool.Pool {
 
 	pool, err := pgxpool.Connect(ctx, psqlConn)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("db connect", zap.Error(err))
 	}
 
 	if err := pool.Ping(ctx); err != nil {
-		log.Fatal(err)
+		logger.Fatal("db ping", zap.Error(err))
 	}
 
 	return pool
 }
 
 func LogOrderStatusChange(id string, value []byte) {
-	log.Println("order id #", id, "; new status: ", string(value))
+	logger.Info("order change", zap.String("id", id), zap.String("status", string(value)))
+}
+
+func initLogger(develMode bool) {
+	logger.Init(develMode)
 }

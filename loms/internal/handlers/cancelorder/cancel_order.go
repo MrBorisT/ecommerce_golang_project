@@ -2,7 +2,6 @@ package cancelorder
 
 import (
 	"context"
-	"log"
 	"route256/loms/internal/domain"
 
 	"github.com/pkg/errors"
@@ -38,8 +37,6 @@ func New(businessLogic domain.Service) *Handler {
 }
 
 func (h *Handler) Handle(ctx context.Context, request Request) (Response, error) {
-	log.Printf("cancel order: %+v", request)
-
 	var response Response
 	err := h.businessLogic.CancelOrder(ctx, request.OrderID)
 	if err != nil {
