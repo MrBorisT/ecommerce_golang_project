@@ -11,6 +11,7 @@ import (
 	"route256/libs/kafka"
 	"route256/libs/logger"
 	"route256/libs/srvwrapper"
+	"route256/libs/tracing"
 	"route256/libs/transactor"
 	"route256/loms/internal/api/loms_v1"
 	"route256/loms/internal/config"
@@ -47,6 +48,7 @@ func main() {
 
 func startApp(ctx context.Context) {
 	initConfig()
+	initTracing()
 	pool := OpenDB(ctx)
 	defer pool.Close()
 	service := setupHandlesAndGetService(pool)
@@ -100,11 +102,11 @@ func setupHandlesAndGetService(pool *pgxpool.Pool) domain.Service {
 	stocks := stockshandler.New(businessLogic)
 	stocksHandler := srvwrapper.New(stocks.Handle)
 
-	http.Handle("/createOrder", logger.Middleware(createOrderHandler))
-	http.Handle("/listOrder", logger.Middleware(listOrderHandler))
-	http.Handle("/orderPayed", logger.Middleware(orderPayedHandler))
-	http.Handle("/cancelOrder", logger.Middleware(cancelOrderHandler))
-	http.Handle("/stocks", logger.Middleware(stocksHandler))
+	SetHandler("/createOrder", createOrderHandler)
+	SetHandler("/listOrder", listOrderHandler)
+	SetHandler("/orderPayed", orderPayedHandler)
+	SetHandler("/cancelOrder", cancelOrderHandler)
+	SetHandler("/stocks", stocksHandler)
 
 	return businessLogic
 }
@@ -164,4 +166,14 @@ func startGRPCServer(businessLogic domain.Service) {
 
 func initLogger(develMode bool) {
 	logger.Init(develMode)
+}
+
+func SetHandler(route string, handler http.Handler) {
+	handler = logger.Middleware(handler)
+	handler = tracing.Middleware(handler, route[1:])
+	http.Handle(route, handler)
+}
+
+func initTracing() {
+	tracing.Init("loms service")
 }

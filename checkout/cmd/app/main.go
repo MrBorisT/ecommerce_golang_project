@@ -17,6 +17,7 @@ import (
 	productServiceAPI "route256/checkout/pkg/product"
 	"route256/libs/logger"
 	"route256/libs/srvwrapper"
+	"route256/libs/tracing"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -34,6 +35,7 @@ func main() {
 	flag.Parse()
 
 	initLogger(*develMode)
+	initTracing()
 	initConfig()
 
 	lomsConn, productConn := ConnectToGRPCServices()
@@ -100,10 +102,10 @@ func setupHandles(lomsConn, productConn *grpc.ClientConn, pool *pgxpool.Pool) {
 	listCart := listcart.New(businessLogic)
 	purchase := purchase.New(businessLogic)
 
-	http.Handle("/addToCart", logger.Middleware(srvwrapper.New(addToCartHandler.Handle)))
-	http.Handle("/deleteFromCart", logger.Middleware(srvwrapper.New(deleteFromCart.Handle)))
-	http.Handle("/listCart", logger.Middleware(srvwrapper.New(listCart.Handle)))
-	http.Handle("/purchase", logger.Middleware(srvwrapper.New(purchase.Handle)))
+	SetHandler("/addToCart", srvwrapper.New(addToCartHandler.Handle))
+	SetHandler("/deleteFromCart", srvwrapper.New(deleteFromCart.Handle))
+	SetHandler("/listCart", srvwrapper.New(listCart.Handle))
+	SetHandler("/purchase", srvwrapper.New(purchase.Handle))
 }
 
 func startServer() {
@@ -149,4 +151,14 @@ func ConnectToGRPCServices() (*grpc.ClientConn, *grpc.ClientConn) {
 
 func initLogger(develMode bool) {
 	logger.Init(develMode)
+}
+
+func initTracing() {
+	tracing.Init("checkout")
+}
+
+func SetHandler(route string, handler http.Handler) {
+	handler = logger.Middleware(handler)
+	handler = tracing.Middleware(handler, route[1:])
+	http.Handle(route, handler)
 }

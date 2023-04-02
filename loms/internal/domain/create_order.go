@@ -38,7 +38,7 @@ func (m *service) CreateOrder(ctx context.Context, user int64, items []model.Ite
 
 	if err != nil {
 		if errors.Is(err, ErrReserveStocks) {
-			m.OrderRepository.OrderFailed(ctx, orderID)
+			err = errors.WithMessage(err, m.OrderRepository.OrderFailed(ctx, orderID).Error())
 		}
 		m.StatusSender.SendStatusChange(orderID, "failed")
 		return 0, err
