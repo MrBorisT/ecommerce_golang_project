@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"route256/libs/kafka"
 	"route256/libs/logger"
 	"route256/notifications/config"
@@ -37,7 +38,9 @@ func main() {
 	defer pool.Close()
 
 	r := reciever.NewReciever(c, repository.NewOffsetsRepo(pool), handlers)
-	r.Subscribe(ctx, topic)
+	if err = r.Subscribe(ctx, topic); err != nil {
+		log.Fatal("subscription failed", zap.Error(err))
+	}
 
 	<-ctx.Done()
 }

@@ -48,7 +48,9 @@ func (r *Reciever) Subscribe(ctx context.Context, topic string) error {
 	for _, partition := range partitionList {
 		initialOffset, ok := offsets[partition]
 		if !ok {
-			r.offsetRepo.CreateRepo(ctx, partition)
+			if err = r.offsetRepo.CreateRepo(ctx, partition); err != nil {
+				return err
+			}
 		}
 
 		pc, err := r.consumer.ConsumePartition(topic, partition, initialOffset)

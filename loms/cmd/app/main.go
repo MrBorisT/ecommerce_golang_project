@@ -25,10 +25,13 @@ import (
 	"route256/loms/internal/sender"
 	desc "route256/loms/pkg/loms_v1"
 
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -152,7 +155,12 @@ func startGRPCServer(businessLogic domain.Service) {
 		logger.Fatal("grpc server listen", zap.Error(err))
 	}
 
-	s := grpc.NewServer()
+	s := grpc.NewServer(
+		grpc.Creds(insecure.NewCredentials()),
+		grpc.UnaryInterceptor(
+			otgrpc.OpenTracingServerInterceptor(opentracing.GlobalTracer()),
+		),
+	)
 
 	reflection.Register(s)
 	desc.RegisterLomsServiceServer(s, loms_v1.NewLomsV1(businessLogic))
