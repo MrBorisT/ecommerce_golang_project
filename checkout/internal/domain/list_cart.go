@@ -4,6 +4,7 @@ import (
 	"context"
 	"route256/checkout/internal/config"
 	"route256/checkout/internal/model"
+	"route256/checkout/internal/repository/schema"
 	"route256/libs/pool/batch"
 	"sync"
 	"sync/atomic"
@@ -21,14 +22,14 @@ type ItemRequest struct {
 	item model.CartItem
 }
 
-func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Item, uint32, error) {
+func (m *service) ListCart(ctx context.Context, user int64) ([]model.Item, uint32, error) {
 	// Getting cart of the user (by user's ID)
-	cart, err := m.CartRepository.ListCart(ctx, user)
+	cartItems, err := m.CartRepository.ListCart(ctx, user)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	items := make([]model.Item, 0, len(cart.Items))
+	items := make([]model.Item, 0, len(cartItems))
 
 	// Setting workers amount from config.yml
 	amountWorkers := config.ConfigData.MaxWorkers
@@ -40,13 +41,13 @@ func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Ite
 	// For task generics (in Task[] brackets):
 	// - ItemRequest: context and cart item (with sku and count info)
 	// - ItemResponse: full item info (sku, count, name and price) and an error
-	tasks := make([]batch.Task[ItemRequest, ItemResponse], 0, len(cart.Items))
+	tasks := make([]batch.Task[ItemRequest, ItemResponse], 0, len(cartItems))
 
 	// Creating every a task for every cart item
-	for _, cartItem := range cart.Items {
+	for _, cartItem := range cartItems {
 		itemReq := ItemRequest{
 			ctx,
-			cartItem,
+			convertSchemaToModel_CartItem(cartItem),
 		}
 		tasks = append(tasks, batch.Task[ItemRequest, ItemResponse]{
 			Callback: m.getItemInfo,
@@ -63,9 +64,11 @@ func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Ite
 	var totalPrice uint32
 
 	go func() {
+		defer wg.Done()
 		for res := range results {
 			if res.err != nil && err == nil {
 				err = res.err
+				continue
 			}
 			items = append(items, *res.item)
 
@@ -75,9 +78,9 @@ func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Ite
 	}()
 
 	// run tasks in worker pool
-	batchingPool.Submit(ctx, tasks)
+	batchingPool.SubmitThenClose(ctx, tasks)
+
 	wg.Wait()
-	batchingPool.Close()
 
 	if err != nil {
 		return nil, 0, err
@@ -85,7 +88,7 @@ func (m *CheckoutService) ListCart(ctx context.Context, user int64) ([]model.Ite
 	return items, totalPrice, nil
 }
 
-func (m *CheckoutService) getItemInfo(req ItemRequest) ItemResponse {
+func (m service) getItemInfo(req ItemRequest) ItemResponse {
 	productName, productPrice, err := m.ProductChecker.GetProduct(req.ctx, req.item.SKU)
 	if err != nil {
 		req.ctx.Done()
@@ -100,4 +103,12 @@ func (m *CheckoutService) getItemInfo(req ItemRequest) ItemResponse {
 		},
 		nil,
 	}
+}
+
+func convertSchemaToModel_CartItem(cartItem schema.CartItems) model.CartItem {
+	res := model.CartItem{}
+	res.SKU = cartItem.SKU
+	res.Count = cartItem.Count
+
+	return res
 }

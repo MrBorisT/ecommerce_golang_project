@@ -1,8 +1,14 @@
 package domain
 
+//go:generate sh -c "mkdir -p mocks && rm -rf mocks/cart_repository_minimock.go && rm -rf mocks/product_checker_minimock.go  && rm -rf mocks/loms_minimock.go"
+//go:generate minimock -i CartRepository -o ./mocks/ -s "_minimock.go"
+//go:generate minimock -i ProductChecker -o ./mocks/ -s "_minimock.go"
+//go:generate minimock -i LOMS -o ./mocks/ -s "_minimock.go"
+
 import (
 	"context"
 	"route256/checkout/internal/model"
+	"route256/checkout/internal/repository/schema"
 )
 
 // LOMS Service
@@ -24,10 +30,17 @@ type LOMS interface {
 	OrderCreator
 }
 
+type CheckoutService interface {
+	AddToCart(ctx context.Context, user int64, sku uint32, count uint16) error
+	DeleteFromCart(ctx context.Context, user int64, sku uint32, count uint16) error
+	ListCart(ctx context.Context, user int64) ([]model.Item, uint32, error)
+	Purchase(ctx context.Context, user int64) error
+}
+
 type CartRepository interface {
 	AddToCart(ctx context.Context, user int64, sku uint32, count uint16) error
 	DeleteFromCart(ctx context.Context, user int64, sku uint32, count uint16) error
-	ListCart(ctx context.Context, user int64) (*model.Cart, error)
+	ListCart(ctx context.Context, user int64) ([]schema.CartItems, error)
 	Purchase(ctx context.Context, user int64) error
 }
 
@@ -37,10 +50,10 @@ type Deps struct {
 	CartRepository
 }
 
-type CheckoutService struct {
+type service struct {
 	Deps
 }
 
-func NewCheckoutService(d Deps) *CheckoutService {
-	return &CheckoutService{d}
+func NewCheckoutService(d Deps) CheckoutService {
+	return &service{d}
 }
