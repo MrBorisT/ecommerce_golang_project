@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"route256/libs/kafka"
 	"route256/libs/logger"
+	"route256/libs/metrics"
 	"route256/libs/srvwrapper"
 	"route256/libs/tracing"
 	"route256/libs/transactor"
@@ -105,11 +106,13 @@ func setupHandlesAndGetService(pool *pgxpool.Pool) domain.Service {
 	stocks := stockshandler.New(businessLogic)
 	stocksHandler := srvwrapper.New(stocks.Handle)
 
-	SetHandler("/createOrder", createOrderHandler)
-	SetHandler("/listOrder", listOrderHandler)
-	SetHandler("/orderPayed", orderPayedHandler)
-	SetHandler("/cancelOrder", cancelOrderHandler)
-	SetHandler("/stocks", stocksHandler)
+	SetHandlerWithMiddlewares("/createOrder", createOrderHandler)
+	SetHandlerWithMiddlewares("/listOrder", listOrderHandler)
+	SetHandlerWithMiddlewares("/orderPayed", orderPayedHandler)
+	SetHandlerWithMiddlewares("/cancelOrder", cancelOrderHandler)
+	SetHandlerWithMiddlewares("/stocks", stocksHandler)
+
+	http.Handle("/metrics", metrics.New())
 
 	return businessLogic
 }
@@ -176,9 +179,10 @@ func initLogger(develMode bool) {
 	logger.Init(develMode)
 }
 
-func SetHandler(route string, handler http.Handler) {
+func SetHandlerWithMiddlewares(route string, handler http.Handler) {
 	handler = logger.Middleware(handler)
 	handler = tracing.Middleware(handler, route[1:])
+	handler = metrics.Middleware(handler)
 	http.Handle(route, handler)
 }
 

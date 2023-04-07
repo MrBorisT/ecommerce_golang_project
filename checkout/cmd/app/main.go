@@ -16,6 +16,7 @@ import (
 	repository "route256/checkout/internal/repository/postgres"
 	productServiceAPI "route256/checkout/pkg/product"
 	"route256/libs/logger"
+	"route256/libs/metrics"
 	"route256/libs/srvwrapper"
 	"route256/libs/tracing"
 	"time"
@@ -102,10 +103,12 @@ func setupHandles(lomsConn, productConn *grpc.ClientConn, pool *pgxpool.Pool) {
 	listCart := listcart.New(businessLogic)
 	purchase := purchase.New(businessLogic)
 
-	SetHandler("/addToCart", srvwrapper.New(addToCartHandler.Handle))
-	SetHandler("/deleteFromCart", srvwrapper.New(deleteFromCart.Handle))
-	SetHandler("/listCart", srvwrapper.New(listCart.Handle))
-	SetHandler("/purchase", srvwrapper.New(purchase.Handle))
+	SetHandlerWithMiddlewares("/addToCart", srvwrapper.New(addToCartHandler.Handle))
+	SetHandlerWithMiddlewares("/deleteFromCart", srvwrapper.New(deleteFromCart.Handle))
+	SetHandlerWithMiddlewares("/listCart", srvwrapper.New(listCart.Handle))
+	SetHandlerWithMiddlewares("/purchase", srvwrapper.New(purchase.Handle))
+
+	http.Handle("/metrics", metrics.New())
 }
 
 func startServer() {
@@ -157,8 +160,9 @@ func initTracing() {
 	tracing.Init("checkout")
 }
 
-func SetHandler(route string, handler http.Handler) {
+func SetHandlerWithMiddlewares(route string, handler http.Handler) {
 	handler = logger.Middleware(handler)
 	handler = tracing.Middleware(handler, route[1:])
+	handler = metrics.Middleware(handler)
 	http.Handle(route, handler)
 }
