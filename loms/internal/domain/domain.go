@@ -18,6 +18,8 @@ type OrderRepository interface {
 	CreateOrder(ctx context.Context, user int64, items []model.Item) (int64, error)
 	ListOrder(ctx context.Context, orderID int64) (string, int64, []model.Item, error)
 	OrderPayed(ctx context.Context, orderID int64) error
+	OrderFailed(ctx context.Context, orderID int64) error
+	OrderAwaitPayment(ctx context.Context, orderID int64) error
 }
 
 type StockRepository interface {
@@ -30,10 +32,15 @@ type TransactionManager interface {
 	RunRepeatableRead(ctx context.Context, f func(ctxTX context.Context) error) error
 }
 
+type StatusSender interface {
+	SendStatusChange(orderID int64, status string)
+}
+
 type Deps struct {
 	OrderRepository
 	StockRepository
 	TransactionManager
+	StatusSender
 }
 
 type service struct {

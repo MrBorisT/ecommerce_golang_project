@@ -5,5 +5,9 @@ import (
 )
 
 func (m *service) OrderPayed(ctx context.Context, orderID int64) error {
-	return m.OrderRepository.OrderPayed(ctx, orderID)
+	if err := m.OrderRepository.OrderPayed(ctx, orderID); err != nil {
+		return err
+	}
+	m.StatusSender.SendStatusChange(orderID, "payed")
+	return nil
 }

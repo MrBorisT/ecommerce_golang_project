@@ -8,9 +8,7 @@ import (
 )
 
 type ConfigStruct struct {
-	Port     string `yaml:"port"`
-	GRPCPort string `yaml:"grpcPort"`
-	DB       struct {
+	DB struct {
 		Host     string `yaml:"host"`
 		Port     int    `yaml:"port"`
 		User     string `yaml:"user"`
