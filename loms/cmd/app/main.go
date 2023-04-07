@@ -10,7 +10,6 @@ import (
 	"os/signal"
 	"route256/libs/kafka"
 	"route256/libs/logger"
-	"route256/libs/metrics"
 	"route256/libs/srvwrapper"
 	"route256/libs/tracing"
 	"route256/libs/transactor"
@@ -22,9 +21,13 @@ import (
 	"route256/loms/internal/handlers/listorder"
 	"route256/loms/internal/handlers/orderpayed"
 	"route256/loms/internal/handlers/stockshandler"
+	"route256/loms/internal/metrics"
 	repository "route256/loms/internal/repository/postgres"
 	"route256/loms/internal/sender"
 	desc "route256/loms/pkg/loms_v1"
+	"time"
+
+	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -163,6 +166,9 @@ func startGRPCServer(businessLogic domain.Service) {
 		grpc.UnaryInterceptor(
 			otgrpc.OpenTracingServerInterceptor(opentracing.GlobalTracer()),
 		),
+		grpc.UnaryInterceptor(
+			grpcMiddleware.ChainUnaryServer(metricsInterceptor),
+		),
 	)
 
 	reflection.Register(s)
@@ -188,4 +194,17 @@ func SetHandlerWithMiddlewares(route string, handler http.Handler) {
 
 func initTracing() {
 	tracing.Init("loms service")
+}
+
+func metricsInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	start := time.Now()
+	res, err := handler(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	elapsed := time.Since(start)
+	metrics.LOMSHistogramResponseTime.WithLabelValues(info.FullMethod).Observe(elapsed.Seconds())
+
+	return res, nil
 }

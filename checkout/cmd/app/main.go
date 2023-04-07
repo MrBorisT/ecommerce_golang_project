@@ -13,10 +13,10 @@ import (
 	deletefromcart "route256/checkout/internal/handlers/deleteFromCart"
 	listcart "route256/checkout/internal/handlers/listCart"
 	"route256/checkout/internal/handlers/purchase"
+	"route256/checkout/internal/metrics"
 	repository "route256/checkout/internal/repository/postgres"
 	productServiceAPI "route256/checkout/pkg/product"
 	"route256/libs/logger"
-	"route256/libs/metrics"
 	"route256/libs/srvwrapper"
 	"route256/libs/tracing"
 	"time"
@@ -121,8 +121,12 @@ func startServer() {
 	}
 }
 
-func GetClientConn(address string) (*grpc.ClientConn, error) {
-	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func GetClientConn(address string, metricsInterceptor grpc.UnaryClientInterceptor) (*grpc.ClientConn, error) {
+	conn, err := grpc.Dial(
+		address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(metricsInterceptor),
+	)
 	if err != nil {
 		return nil, errors.WithMessage(err, "grpc dial")
 	}
@@ -138,13 +142,13 @@ func CloseConnections(connections ...*grpc.ClientConn) {
 
 func ConnectToGRPCServices() (*grpc.ClientConn, *grpc.ClientConn) {
 	//LOMS connection
-	lomsConn, err := GetClientConn(config.ConfigData.Services.Loms)
+	lomsConn, err := GetClientConn(config.ConfigData.Services.Loms, LOMSClientMetrics)
 	if err != nil {
 		logger.Fatal("loms connect", zap.Error(err))
 	}
 
 	//Product connection
-	productConn, err := GetClientConn(config.ConfigData.Services.ProductService)
+	productConn, err := GetClientConn(config.ConfigData.Services.ProductService, ProductClientMetrics)
 	if err != nil {
 		logger.Fatal("product service", zap.Error(err))
 	}
@@ -165,4 +169,24 @@ func SetHandlerWithMiddlewares(route string, handler http.Handler) {
 	handler = tracing.Middleware(handler, route[1:])
 	handler = metrics.Middleware(handler)
 	http.Handle(route, handler)
+}
+
+func ProductClientMetrics(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	start := time.Now()
+	if err := invoker(ctx, method, req, reply, cc, opts...); err != nil {
+		return err
+	}
+	elapsed := time.Since(start)
+	metrics.ProductServiceHistogramResponseTime.WithLabelValues(method).Observe(elapsed.Seconds())
+	return nil
+}
+
+func LOMSClientMetrics(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	start := time.Now()
+	if err := invoker(ctx, method, req, reply, cc, opts...); err != nil {
+		return err
+	}
+	elapsed := time.Since(start)
+	metrics.LOMSHistogramResponseTime.WithLabelValues(method).Observe(elapsed.Seconds())
+	return nil
 }
