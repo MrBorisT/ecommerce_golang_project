@@ -14,6 +14,15 @@ type RateLimiter interface {
 	Wait(ctx context.Context) error
 }
 
+type InMemCache interface {
+	SetValue(key string, value interface{})
+	GetInt32(key string) (*int32, bool)
+	GetInt64(key string) (*int64, bool)
+	GetUint32(key string) (*uint32, bool)
+	GetUint64(key string) (*uint64, bool)
+	GetString(key string) (*string, bool)
+}
+
 type client struct {
 	Deps
 }
@@ -22,6 +31,7 @@ type Deps struct {
 	ProductClient productServiceAPI.ProductServiceClient
 	Token         string
 	Limiter       RateLimiter
+	Cache         InMemCache
 }
 
 func NewClient(d Deps) *client {

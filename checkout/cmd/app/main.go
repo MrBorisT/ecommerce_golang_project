@@ -17,6 +17,7 @@ import (
 	repository "route256/checkout/internal/repository/postgres"
 	productServiceAPI "route256/checkout/pkg/product"
 	"route256/libs/logger"
+	"route256/libs/mycache"
 	"route256/libs/srvwrapper"
 	"route256/libs/tracing"
 	"time"
@@ -88,6 +89,7 @@ func setupHandles(lomsConn, productConn *grpc.ClientConn, pool *pgxpool.Pool) {
 		ProductClient: psClient,
 		Token:         config.ConfigData.Token,
 		Limiter:       limiter,
+		Cache:         mycache.NewMyCache(),
 	}
 	productClient := productsClient.NewClient(deps)
 	repository := repository.NewCartRepo(pool)
