@@ -27,10 +27,11 @@ func NewMyCache[T comparable](ttl time.Duration) *cache[T] {
 func (c *cache[T]) SetValue(key T, value any) {
 	c.lock.Lock()
 	c.m[key] = &value
-	c.mTTL[key] = time.NewTimer(c.ttl)
+	ttlTimer := time.NewTimer(c.ttl)
+	c.mTTL[key] = ttlTimer
 	c.lock.Unlock()
 	go func() {
-		<-c.mTTL[key].C
+		<-ttlTimer.C
 		c.ClearValue(key)
 	}()
 }
