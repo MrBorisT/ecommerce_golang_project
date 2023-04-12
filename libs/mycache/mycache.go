@@ -5,26 +5,26 @@ import (
 	"time"
 )
 
-type cache struct {
+type cache[T comparable] struct {
 	//simple hash map with any value
-	m map[string]any
+	m map[T]any
 	//map for ttl timers
-	mTTL map[string]*time.Timer
+	mTTL map[T]*time.Timer
 	//for thread-safety
 	lock sync.RWMutex
 
 	ttl time.Duration
 }
 
-func NewMyCache(ttl time.Duration) *cache {
-	return &cache{
-		m:    make(map[string]any),
-		mTTL: make(map[string]*time.Timer),
+func NewMyCache[T comparable](ttl time.Duration) *cache[T] {
+	return &cache[T]{
+		m:    make(map[T]any),
+		mTTL: make(map[T]*time.Timer),
 		ttl:  ttl,
 	}
 }
 
-func (c *cache) SetValue(key string, value any) {
+func (c *cache[T]) SetValue(key T, value any) {
 	c.lock.Lock()
 	c.m[key] = value
 	c.mTTL[key] = time.NewTimer(c.ttl)
@@ -36,7 +36,7 @@ func (c *cache) SetValue(key string, value any) {
 }
 
 //private method to retrieve value
-func (c *cache) getValue(key string) (any, bool) {
+func (c *cache[T]) getValue(key T) (any, bool) {
 	c.lock.RLock()
 	val, ok := c.m[key]
 	c.lock.RUnlock()
@@ -63,7 +63,7 @@ func castValue[T any](val any) (*T, bool) {
 	return &res, true
 }
 
-func (c *cache) clearValue(key string) {
+func (c *cache[T]) clearValue(key T) {
 	c.lock.Lock()
 	delete(c.m, key)
 	if timer, ok := c.mTTL[key]; ok {
@@ -73,7 +73,7 @@ func (c *cache) clearValue(key string) {
 	c.lock.Unlock()
 }
 
-func (c *cache) GetInt32(key string) (*int32, bool) {
+func (c *cache[T]) GetInt32(key T) (*int32, bool) {
 	val, ok := c.getValue(key)
 	if !ok {
 		return nil, false
@@ -81,7 +81,7 @@ func (c *cache) GetInt32(key string) (*int32, bool) {
 	return castValue[int32](val)
 }
 
-func (c *cache) GetInt64(key string) (*int64, bool) {
+func (c *cache[T]) GetInt64(key T) (*int64, bool) {
 	val, ok := c.getValue(key)
 	if !ok {
 		return nil, false
@@ -89,7 +89,7 @@ func (c *cache) GetInt64(key string) (*int64, bool) {
 	return castValue[int64](val)
 }
 
-func (c *cache) GetUint32(key string) (*uint32, bool) {
+func (c *cache[T]) GetUint32(key T) (*uint32, bool) {
 	val, ok := c.getValue(key)
 	if !ok {
 		return nil, false
@@ -97,7 +97,7 @@ func (c *cache) GetUint32(key string) (*uint32, bool) {
 	return castValue[uint32](val)
 }
 
-func (c *cache) GetUint64(key string) (*uint64, bool) {
+func (c *cache[T]) GetUint64(key T) (*uint64, bool) {
 	val, ok := c.getValue(key)
 	if !ok {
 		return nil, false
@@ -105,7 +105,7 @@ func (c *cache) GetUint64(key string) (*uint64, bool) {
 	return castValue[uint64](val)
 }
 
-func (c *cache) GetString(key string) (*string, bool) {
+func (c *cache[T]) GetString(key T) (*string, bool) {
 	val, ok := c.getValue(key)
 	if !ok {
 		return nil, false
