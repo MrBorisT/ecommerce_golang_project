@@ -16,7 +16,7 @@ type RateLimiter interface {
 
 type InMemCache[T comparable] interface {
 	SetValue(key T, value any)
-	GetRawValue(key T) (*any, bool)
+	GetValue(key T) (*any, bool)
 	ClearValue(key T)
 }
 

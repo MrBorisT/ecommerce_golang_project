@@ -15,7 +15,7 @@ type product struct {
 }
 
 func (c *client) GetProduct(ctx context.Context, sku uint32) (string, uint32, error) {
-	productInfo, ok := c.Cache.GetRawValue(sku)
+	productInfo, ok := c.Cache.GetValue(sku)
 	if !ok {
 		return c.requestProductAndCache(ctx, sku)
 	}
