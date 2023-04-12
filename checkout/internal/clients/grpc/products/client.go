@@ -16,11 +16,8 @@ type RateLimiter interface {
 
 type InMemCache[T comparable] interface {
 	SetValue(key T, value any)
-	GetInt32(key T) (*int32, bool)
-	GetInt64(key T) (*int64, bool)
-	GetUint32(key T) (*uint32, bool)
-	GetUint64(key T) (*uint64, bool)
-	GetString(key T) (*string, bool)
+	GetRawValue(key T) (*any, bool)
+	ClearValue(key T)
 }
 
 type client struct {

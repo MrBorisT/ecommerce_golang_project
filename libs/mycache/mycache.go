@@ -7,7 +7,7 @@ import (
 
 type cache[T comparable] struct {
 	//simple hash map with any value
-	m map[T]any
+	m map[T]*any
 	//map for ttl timers
 	mTTL map[T]*time.Timer
 	//for thread-safety
@@ -18,7 +18,7 @@ type cache[T comparable] struct {
 
 func NewMyCache[T comparable](ttl time.Duration) *cache[T] {
 	return &cache[T]{
-		m:    make(map[T]any),
+		m:    make(map[T]*any),
 		mTTL: make(map[T]*time.Timer),
 		ttl:  ttl,
 	}
@@ -26,17 +26,17 @@ func NewMyCache[T comparable](ttl time.Duration) *cache[T] {
 
 func (c *cache[T]) SetValue(key T, value any) {
 	c.lock.Lock()
-	c.m[key] = value
+	c.m[key] = &value
 	c.mTTL[key] = time.NewTimer(c.ttl)
 	c.lock.Unlock()
 	go func() {
 		<-c.mTTL[key].C
-		c.clearValue(key)
+		c.ClearValue(key)
 	}()
 }
 
 //private method to retrieve value
-func (c *cache[T]) getValue(key T) (any, bool) {
+func (c *cache[T]) getValue(key T) (*any, bool) {
 	c.lock.RLock()
 	val, ok := c.m[key]
 	c.lock.RUnlock()
@@ -63,7 +63,7 @@ func castValue[T any](val any) (*T, bool) {
 	return &res, true
 }
 
-func (c *cache[T]) clearValue(key T) {
+func (c *cache[T]) ClearValue(key T) {
 	c.lock.Lock()
 	delete(c.m, key)
 	if timer, ok := c.mTTL[key]; ok {
@@ -111,4 +111,12 @@ func (c *cache[T]) GetString(key T) (*string, bool) {
 		return nil, false
 	}
 	return castValue[string](val)
+}
+
+func (c *cache[T]) GetRawValue(key T) (*any, bool) {
+	val, ok := c.getValue(key)
+	if !ok {
+		return nil, false
+	}
+	return val, true
 }
