@@ -15,7 +15,7 @@ type RateLimiter interface {
 }
 
 type InMemCache interface {
-	SetValue(key string, value interface{})
+	SetValue(key string, value any)
 	GetInt32(key string) (*int32, bool)
 	GetInt64(key string) (*int64, bool)
 	GetUint32(key string) (*uint32, bool)

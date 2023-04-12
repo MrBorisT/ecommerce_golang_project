@@ -85,11 +85,12 @@ func setupHandles(lomsConn, productConn *grpc.ClientConn, pool *pgxpool.Pool) {
 	lomsClient := loms.NewClient(lomsConn)
 	psClient := productServiceAPI.NewProductServiceClient(productConn)
 	limiter := rate.NewLimiter(rate.Every(time.Second*1), DEFAULT_RPS)
+	cacheTTL := config.ConfigData.CacheTTLInMinutes
 	deps := productsClient.Deps{
 		ProductClient: psClient,
 		Token:         config.ConfigData.Token,
 		Limiter:       limiter,
-		Cache:         mycache.NewMyCache(),
+		Cache:         mycache.NewMyCache(time.Minute * time.Duration(cacheTTL)),
 	}
 	productClient := productsClient.NewClient(deps)
 	repository := repository.NewCartRepo(pool)
