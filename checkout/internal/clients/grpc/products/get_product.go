@@ -16,6 +16,7 @@ type product struct {
 
 func (c *client) GetProduct(ctx context.Context, sku uint32) (string, uint32, error) {
 	productInfo, ok := c.Cache.GetValue(sku)
+	cacheRequestsTotal.Inc()
 	if !ok {
 		return c.requestProductAndCache(ctx, sku)
 	}
@@ -23,9 +24,11 @@ func (c *client) GetProduct(ctx context.Context, sku uint32) (string, uint32, er
 	productInfoConverted, ok := (*productInfo).(product)
 	if !ok {
 		logger.Error("invalid cache", zap.Uint32("sku", sku))
+		cacheErrorsTotal.Inc()
 		c.Cache.ClearValue(sku)
 		return c.requestProductAndCache(ctx, sku)
 	}
+	cacheHitCount.Inc()
 
 	return productInfoConverted.name, productInfoConverted.price, nil
 }

@@ -3,6 +3,9 @@ package products
 import (
 	"context"
 	productServiceAPI "route256/checkout/pkg/product"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 type Client interface {
@@ -34,3 +37,15 @@ type Deps struct {
 func NewClient(d Deps) *client {
 	return &client{d}
 }
+
+var cacheHitCount = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "app_cache_hits_total",
+})
+
+var cacheRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "app_cache_requests_total",
+})
+
+var cacheErrorsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "app_cache_errors_total",
+})
