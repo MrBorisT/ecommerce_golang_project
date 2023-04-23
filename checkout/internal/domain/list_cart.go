@@ -63,7 +63,9 @@ func (m *service) ListCart(ctx context.Context, user int64) ([]model.Item, uint3
 	wg.Add(1)
 	var totalPrice uint32
 
+	itemsChan := make(chan model.Item)
 	go func() {
+		defer close(itemsChan)
 		defer wg.Done()
 		for res := range results {
 			if err != nil {
@@ -73,10 +75,19 @@ func (m *service) ListCart(ctx context.Context, user int64) ([]model.Item, uint3
 				err = res.err
 				continue
 			}
-			items = append(items, *res.item)
+
+			itemsChan <- *res.item
 
 			// for race safety
 			atomic.AddUint32(&totalPrice, res.item.Price*uint32(res.item.Count))
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for item := range itemsChan {
+			items = append(items, item)
 		}
 	}()
 

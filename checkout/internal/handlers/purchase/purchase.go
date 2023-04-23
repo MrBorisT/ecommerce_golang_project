@@ -2,7 +2,6 @@ package purchase
 
 import (
 	"context"
-	"log"
 	"route256/checkout/internal/domain"
 
 	"github.com/pkg/errors"
@@ -40,8 +39,6 @@ type Response struct {
 }
 
 func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {
-	log.Printf("purchase: %+v", req)
-
 	var response Response
 
 	err := h.businessLogic.Purchase(ctx, req.User)

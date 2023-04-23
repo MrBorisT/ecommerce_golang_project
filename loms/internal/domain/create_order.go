@@ -2,11 +2,12 @@ package domain
 
 import (
 	"context"
-	"log"
+	"route256/libs/logger"
 	"route256/loms/internal/model"
 	"time"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 var (
@@ -37,9 +38,8 @@ func (m *service) CreateOrder(ctx context.Context, user int64, items []model.Ite
 
 	if err != nil {
 		if errors.Is(err, ErrReserveStocks) {
-			m.OrderRepository.OrderFailed(ctx, orderID)
+			err = errors.WithMessage(err, m.OrderRepository.OrderFailed(ctx, orderID).Error())
 		}
-		log.Println("Create order failed", err)
 		m.StatusSender.SendStatusChange(orderID, "failed")
 		return 0, err
 	}
@@ -55,13 +55,13 @@ func (m *service) CancelOrderByTimer(ctx context.Context, orderID int64) {
 	var status string
 	var err error
 	if status, _, _, err = m.OrderRepository.ListOrder(ctx, orderID); err != nil {
-		log.Printf("getting order when cancelling: %v\n", err)
+		logger.Error("getting order when cancelling", zap.Error(err))
 	}
 	if status != "new" {
 		return
 	}
 	if err = m.OrderRepository.CancelOrder(ctx, orderID); err != nil {
-		log.Printf("cancel order by timer: %v\n", err)
+		logger.Error("cancel order by timer", zap.Error(err))
 	}
 
 }

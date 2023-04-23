@@ -2,10 +2,11 @@ package reciever
 
 import (
 	"context"
-	"log"
+	"route256/libs/logger"
 
 	"github.com/Shopify/sarama"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 type HandleFunc func(id string, value []byte)
@@ -47,7 +48,9 @@ func (r *Reciever) Subscribe(ctx context.Context, topic string) error {
 	for _, partition := range partitionList {
 		initialOffset, ok := offsets[partition]
 		if !ok {
-			r.offsetRepo.CreateRepo(ctx, partition)
+			if err = r.offsetRepo.CreateRepo(ctx, partition); err != nil {
+				return err
+			}
 		}
 
 		pc, err := r.consumer.ConsumePartition(topic, partition, initialOffset)
@@ -60,7 +63,7 @@ func (r *Reciever) Subscribe(ctx context.Context, topic string) error {
 				k := string(message.Key)
 				handler(k, message.Value)
 				if err := r.offsetRepo.UpdateOffset(ctx, partition, message.Offset); err != nil {
-					log.Println("error updating #", partition, " partition, offset #", message.Offset, ": ", err)
+					logger.Error("error updating", zap.Int32("partition", partition), zap.Int64("offset", message.Offset), zap.Error(err))
 				}
 			}
 		}(pc, partition)

@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"route256/checkout/internal/clients/grpc/loms"
 	productsClient "route256/checkout/internal/clients/grpc/products"
@@ -13,13 +13,18 @@ import (
 	deletefromcart "route256/checkout/internal/handlers/deleteFromCart"
 	listcart "route256/checkout/internal/handlers/listCart"
 	"route256/checkout/internal/handlers/purchase"
+	"route256/checkout/internal/metrics"
 	repository "route256/checkout/internal/repository/postgres"
 	productServiceAPI "route256/checkout/pkg/product"
+	"route256/libs/logger"
+	"route256/libs/mycache"
 	"route256/libs/srvwrapper"
+	"route256/libs/tracing"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -28,11 +33,19 @@ import (
 const DEFAULT_RPS = 10
 
 func main() {
+	develMode := flag.Bool("devel", false, "developer mode")
+	flag.Parse()
+
+	initLogger(*develMode)
+	initTracing()
 	initConfig()
+
 	lomsConn, productConn := ConnectToGRPCServices()
 	defer CloseConnections(lomsConn, productConn)
+
 	pool := OpenDB()
 	defer pool.Close()
+
 	setupHandles(lomsConn, productConn, pool)
 	startServer()
 }
@@ -40,7 +53,7 @@ func main() {
 func initConfig() {
 	err := config.Init()
 	if err != nil {
-		log.Fatalln("config init: ", err)
+		logger.Fatal("config init", zap.Error(err))
 	}
 }
 
@@ -58,11 +71,11 @@ func OpenDB() *pgxpool.Pool {
 
 	pool, err := pgxpool.Connect(ctx, psqlConn)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("db connect", zap.Error(err))
 	}
 
 	if err := pool.Ping(ctx); err != nil {
-		log.Fatal(err)
+		logger.Fatal("db ping", zap.Error(err))
 	}
 
 	return pool
@@ -72,10 +85,12 @@ func setupHandles(lomsConn, productConn *grpc.ClientConn, pool *pgxpool.Pool) {
 	lomsClient := loms.NewClient(lomsConn)
 	psClient := productServiceAPI.NewProductServiceClient(productConn)
 	limiter := rate.NewLimiter(rate.Every(time.Second*1), DEFAULT_RPS)
+	cacheTTL := config.ConfigData.CacheTTLInMinutes
 	deps := productsClient.Deps{
 		ProductClient: psClient,
 		Token:         config.ConfigData.Token,
 		Limiter:       limiter,
+		Cache:         mycache.NewMyCache[uint32](time.Minute * time.Duration(cacheTTL)),
 	}
 	productClient := productsClient.NewClient(deps)
 	repository := repository.NewCartRepo(pool)
@@ -91,24 +106,30 @@ func setupHandles(lomsConn, productConn *grpc.ClientConn, pool *pgxpool.Pool) {
 	listCart := listcart.New(businessLogic)
 	purchase := purchase.New(businessLogic)
 
-	http.Handle("/addToCart", srvwrapper.New(addToCartHandler.Handle))
-	http.Handle("/deleteFromCart", srvwrapper.New(deleteFromCart.Handle))
-	http.Handle("/listCart", srvwrapper.New(listCart.Handle))
-	http.Handle("/purchase", srvwrapper.New(purchase.Handle))
+	SetHandlerWithMiddlewares("/addToCart", srvwrapper.New(addToCartHandler.Handle))
+	SetHandlerWithMiddlewares("/deleteFromCart", srvwrapper.New(deleteFromCart.Handle))
+	SetHandlerWithMiddlewares("/listCart", srvwrapper.New(listCart.Handle))
+	SetHandlerWithMiddlewares("/purchase", srvwrapper.New(purchase.Handle))
+
+	http.Handle("/metrics", metrics.New())
 }
 
 func startServer() {
 	port := config.ConfigData.Port
 
-	log.Println("listening http at: ", port)
+	logger.Info("start server", zap.String("port", port))
 
 	if err := http.ListenAndServe(port, nil); err != nil {
-		log.Fatalln("cannot listen http: ", err)
+		logger.Fatal("server error", zap.Error(err))
 	}
 }
 
-func GetClientConn(address string) (*grpc.ClientConn, error) {
-	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func GetClientConn(address string, metricsInterceptor grpc.UnaryClientInterceptor) (*grpc.ClientConn, error) {
+	conn, err := grpc.Dial(
+		address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(metricsInterceptor),
+	)
 	if err != nil {
 		return nil, errors.WithMessage(err, "grpc dial")
 	}
@@ -124,16 +145,51 @@ func CloseConnections(connections ...*grpc.ClientConn) {
 
 func ConnectToGRPCServices() (*grpc.ClientConn, *grpc.ClientConn) {
 	//LOMS connection
-	lomsConn, err := GetClientConn(config.ConfigData.Services.Loms)
+	lomsConn, err := GetClientConn(config.ConfigData.Services.Loms, LOMSClientMetrics)
 	if err != nil {
-		log.Fatalf("cannot connect to loms service: %v\n", err.Error())
+		logger.Fatal("loms connect", zap.Error(err))
 	}
 
 	//Product connection
-	productConn, err := GetClientConn(config.ConfigData.Services.ProductService)
+	productConn, err := GetClientConn(config.ConfigData.Services.ProductService, ProductClientMetrics)
 	if err != nil {
-		log.Fatalf("cannot connect to product service: %v\n", err.Error())
+		logger.Fatal("product service", zap.Error(err))
 	}
 
 	return lomsConn, productConn
+}
+
+func initLogger(develMode bool) {
+	logger.Init(develMode)
+}
+
+func initTracing() {
+	tracing.Init("checkout")
+}
+
+func SetHandlerWithMiddlewares(route string, handler http.Handler) {
+	handler = logger.Middleware(handler)
+	handler = tracing.Middleware(handler, route[1:])
+	handler = metrics.Middleware(handler)
+	http.Handle(route, handler)
+}
+
+func ProductClientMetrics(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	start := time.Now()
+	if err := invoker(ctx, method, req, reply, cc, opts...); err != nil {
+		return err
+	}
+	elapsed := time.Since(start)
+	metrics.ProductServiceHistogramResponseTime.WithLabelValues(method).Observe(elapsed.Seconds())
+	return nil
+}
+
+func LOMSClientMetrics(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	start := time.Now()
+	if err := invoker(ctx, method, req, reply, cc, opts...); err != nil {
+		return err
+	}
+	elapsed := time.Since(start)
+	metrics.LOMSHistogramResponseTime.WithLabelValues(method).Observe(elapsed.Seconds())
+	return nil
 }

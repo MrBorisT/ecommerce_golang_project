@@ -3,11 +3,11 @@ package sender
 import (
 	"encoding/json"
 	"fmt"
+	"route256/libs/logger"
 	"time"
 
-	"log"
-
 	"github.com/Shopify/sarama"
+	"go.uber.org/zap"
 )
 
 type sender struct {
@@ -42,7 +42,6 @@ func NewStatusSender(producer sarama.AsyncProducer, topic string, onSuccess, onF
 		for m := range producer.Successes() {
 			bytes, _ := m.Key.Encode()
 			onSuccess(string(bytes))
-			log.Printf("order id: %s, partition: %d, offset: %d", string(bytes), m.Partition, m.Offset)
 		}
 	}()
 
@@ -54,7 +53,7 @@ func (s *sender) SendStatusChange(orderID int64, status string) {
 		Status: status,
 	})
 	if err != nil {
-		log.Println("sending status change", err)
+		logger.Error("sending status change", zap.Error(err))
 		return
 	}
 

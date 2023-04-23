@@ -2,7 +2,6 @@ package listcart
 
 import (
 	"context"
-	"log"
 	"route256/checkout/internal/domain"
 	"route256/checkout/internal/model"
 
@@ -42,8 +41,6 @@ type Response struct {
 }
 
 func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {
-	log.Printf("listCart: %+v", req)
-
 	var response Response
 
 	items, totalPrice, err := h.businessLogic.ListCart(ctx, req.User)

@@ -2,7 +2,6 @@ package listorder
 
 import (
 	"context"
-	"log"
 	"route256/loms/internal/domain"
 	"route256/loms/internal/model"
 
@@ -41,8 +40,6 @@ func New(businessLogic domain.Service) *Handler {
 	}
 }
 func (h *Handler) Handle(ctx context.Context, request Request) (Response, error) {
-	log.Printf("list order: %+v", request)
-
 	var response Response
 	status, user, items, err := h.businessLogic.ListOrder(ctx, request.OrderID)
 
